@@ -6,8 +6,9 @@ from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel, Field
-from sqlalchemy import Boolean, Integer, String, create_engine, select
-from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, create_engine, func, select
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship, sessionmaker
+from datetime import datetime, timezone
 from pwdlib import PasswordHash
 
 from .security import create_access_token, decode_access_token, hash_password, verify_password
