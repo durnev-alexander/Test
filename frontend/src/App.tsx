@@ -8,6 +8,8 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 type User = { username: string; is_active: boolean };
 type Dashboard = { message: string; address_count: number; open_requests: number; pending_requests: number };
+type Address = { id: number; address_text: string; address_type: string; is_active: boolean };
+type ServiceRequest = { id: number; title: string; description: string; priority: string; status: string; address_id: number; address_text: string; created_by: string; created_at: string };
 
 export default function App() {
   const [token, setToken] = useState(() => sessionStorage.getItem("jkx_token") || "");
@@ -19,6 +21,15 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [active, setActive] = useState("Главная");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [requests, setRequests] = useState<ServiceRequest[]>([]);
+  const [addressText, setAddressText] = useState("");
+  const [addressType, setAddressType] = useState("building");
+  const [requestTitle, setRequestTitle] = useState("");
+  const [requestDescription, setRequestDescription] = useState("");
+  const [requestPriority, setRequestPriority] = useState("normal");
+  const [requestAddressId, setRequestAddressId] = useState("");
+  const [notice, setNotice] = useState("");
 
   async function loadSession(accessToken: string) {
     const headers = { Authorization: `Bearer ${accessToken}` };
@@ -39,6 +50,80 @@ export default function App() {
       setUser(null);
     });
   }, [token]);
+
+  useEffect(() => {
+    if (!token || !user) return;
+    const headers = { Authorization: `Bearer ${token}` };
+    if (active === "Адреса" || active === "Заявки") {
+      fetch(`${API_URL}/api/addresses`, { headers })
+        .then(async response => {
+          if (!response.ok) throw new Error("Не удалось загрузить справочник адресов.");
+          setAddresses(await response.json());
+        })
+        .catch(e => setError(e instanceof Error ? e.message : "Ошибка загрузки адресов."));
+    }
+    if (active === "Заявки") {
+      fetch(`${API_URL}/api/requests`, { headers })
+        .then(async response => {
+          if (!response.ok) throw new Error("Не удалось загрузить заявки.");
+          setRequests(await response.json());
+        })
+        .catch(e => setError(e instanceof Error ? e.message : "Ошибка загрузки заявок."));
+    }
+  }, [token, user, active]);
+
+  async function handleCreateAddress(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setNotice("");
+    try {
+      const response = await fetch(`${API_URL}/api/addresses`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ address_text: addressText.trim(), address_type: addressType }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "Не удалось сохранить адрес.");
+      setAddresses(previous => [...previous, data].sort((a, b) => a.address_text.localeCompare(b.address_text, "ru")));
+      setAddressText("");
+      setNotice("Адрес добавлен в справочник.");
+      setDashboard(previous => previous ? { ...previous, address_count: previous.address_count + 1 } : previous);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Ошибка сохранения адреса.");
+    }
+  }
+
+  async function handleCreateRequest(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setNotice("");
+    if (!requestAddressId) {
+      setError("Выберите адрес из справочника адресов.");
+      return;
+    }
+    try {
+      const response = await fetch(`${API_URL}/api/requests`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          title: requestTitle.trim(),
+          description: requestDescription.trim(),
+          priority: requestPriority,
+          address_id: Number(requestAddressId),
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "Не удалось создать заявку.");
+      setRequests(previous => [data, ...previous]);
+      setRequestTitle("");
+      setRequestDescription("");
+      setRequestPriority("normal");
+      setNotice("Заявка создана и привязана к выбранному адресу.");
+      setDashboard(previous => previous ? { ...previous, open_requests: previous.open_requests + 1, pending_requests: previous.pending_requests + 1 } : previous);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Ошибка создания заявки.");
+    }
+  }
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -130,12 +215,51 @@ export default function App() {
               <StatCard icon={<Users size={20} />} label="Ожидают обработки" value={dashboard?.pending_requests ?? "—"} tone="purple" />
             </div>
             <div className="content-grid"><section className="surface-card"><div className="card-heading"><div><h3>Быстрые действия</h3><p>Перейдите к нужному разделу</p></div><LayoutDashboard size={20} className="subtle-icon" /></div><div className="quick-actions"><button onClick={() => setActive("Адреса")}><span className="action-icon blue"><MapPin size={19} /></span><span><strong>Справочник адресов</strong><small>Дома, квартиры и улицы</small></span><span className="arrow">→</span></button><button onClick={() => setActive("Заявки")}><span className="action-icon orange"><ClipboardList size={19} /></span><span><strong>Заявки</strong><small>Просмотр и обработка обращений</small></span><span className="arrow">→</span></button><button onClick={() => setActive("Жильцы")}><span className="action-icon purple"><Users size={19} /></span><span><strong>Жильцы</strong><small>Сведения о жителях</small></span><span className="arrow">→</span></button></div></section><section className="surface-card"><div className="card-heading"><div><h3>Состояние системы</h3><p>Основные компоненты</p></div><CheckCircle2 size={20} className="success-icon" /></div><div className="system-row"><span className="system-dot" /><span>Авторизация</span><strong>Работает</strong></div><div className="system-row"><span className="system-dot" /><span>Рабочая область</span><strong>Работает</strong></div><div className="system-row"><span className="system-dot" /><span>Справочник адресов</span><strong>Подготовлен</strong></div><div className="system-note">Данные будут отображаться здесь по мере заполнения справочников.</div></section></div>
-          </> : <section className="surface-card section-placeholder"><div className="placeholder-icon">{active === "Адреса" ? <MapPin size={26} /> : active === "Заявки" ? <ClipboardList size={26} /> : active === "Жильцы" ? <Users size={26} /> : <Settings size={26} />}</div><h3>{active === "Адреса" ? "Справочник адресов" : active}</h3><p>{active === "Адреса" ? "Здесь будет доступно добавление населённых пунктов, улиц, домов и квартир." : "Раздел подготовлен для следующего этапа разработки."}</p>{active === "Адреса" && <button className="primary-button" onClick={() => setError("Раздел адресов будет подключён на следующем этапе.")}>Подготовить справочник</button>}</section>}
-          <footer className="page-footer">ЖКХ · Диспетчер <span>Версия 0.1.0 · Прототип</span></footer>
+          </> : active === "Адреса" ? <section className="directory-layout">
+            <div className="surface-card">
+              <div className="card-heading"><div><h3>Добавить адрес</h3><p>Адреса из этого списка доступны при создании заявок</p></div><MapPin size={20} className="subtle-icon" /></div>
+              <form className="data-form" onSubmit={handleCreateAddress}>
+                <label htmlFor="addressType">Тип адреса</label>
+                <select id="addressType" value={addressType} onChange={e => setAddressType(e.target.value)}><option value="locality">Населённый пункт</option><option value="street">Улица</option><option value="building">Дом</option><option value="apartment">Квартира</option><option value="other">Другой адрес</option></select>
+                <label htmlFor="addressText">Адрес / название</label>
+                <input id="addressText" value={addressText} onChange={e => setAddressText(e.target.value)} placeholder="Например, ул. Лесная, д. 12, кв. 4" required minLength={2} maxLength={500} />
+                <button className="primary-button" type="submit">Добавить в справочник</button>
+              </form>
+            </div>
+            <div className="surface-card"><div className="card-heading"><div><h3>Справочник адресов</h3><p>{addresses.length} записей</p></div><Search size={20} className="subtle-icon" /></div>
+              {addresses.length ? <div className="address-list">{addresses.map(address => <div className="address-row" key={address.id}><span className="action-icon blue"><MapPin size={17} /></span><div><strong>{address.address_text}</strong><small>{addressTypeLabel(address.address_type)}</small></div></div>)}</div> : <div className="empty-state">Справочник пока пуст. Добавьте адрес — он появится в списке выбора при заведении заявки.</div>}
+            </div>
+          </section> : active === "Заявки" ? <div className="directory-layout">
+            <section className="surface-card"><div className="card-heading"><div><h3>Новая заявка</h3><p>Обязательно выберите адрес из справочника</p></div><ClipboardList size={20} className="subtle-icon" /></div>
+              <form className="data-form" onSubmit={handleCreateRequest}>
+                <label htmlFor="requestTitle">Тема заявки</label><input id="requestTitle" value={requestTitle} onChange={e => setRequestTitle(e.target.value)} placeholder="Например, протечка в подъезде" required minLength={2} maxLength={200} />
+                <label htmlFor="requestAddress">Адрес объекта <span className="required-mark">*</span></label>
+                <select id="requestAddress" value={requestAddressId} onChange={e => setRequestAddressId(e.target.value)} required><option value="">Выберите адрес из справочника…</option>{addresses.map(address => <option key={address.id} value={address.id}>{address.address_text}</option>)}</select>
+                {addresses.length === 0 && <p className="form-help">Нет адресов для выбора. Сначала добавьте адрес в разделе «Адреса».</p>}
+                <label htmlFor="requestPriority">Приоритет</label><select id="requestPriority" value={requestPriority} onChange={e => setRequestPriority(e.target.value)}><option value="low">Низкий</option><option value="normal">Обычный</option><option value="high">Высокий</option><option value="urgent">Срочный</option></select>
+                <label htmlFor="requestDescription">Описание</label><textarea id="requestDescription" value={requestDescription} onChange={e => setRequestDescription(e.target.value)} placeholder="Опишите проблему или работы" rows={3} maxLength={5000} />
+                <button className="primary-button" type="submit" disabled={addresses.length === 0}>Создать заявку</button>
+              </form>
+            </section>
+            <section className="surface-card"><div className="card-heading"><div><h3>Заявки</h3><p>{requests.length} записей</p></div><ClipboardList size={20} className="subtle-icon" /></div>
+              {requests.length ? <div className="request-list">{requests.map(request => <article className="request-row" key={request.id}><div className="request-row-top"><strong>#{request.id} · {request.title}</strong><span className={`priority-pill priority-${request.priority}`}>{priorityLabel(request.priority)}</span></div><div className="request-address"><MapPin size={14} /> {request.address_text}</div>{request.description && <p>{request.description}</p>}<small>{new Date(request.created_at).toLocaleString("ru-RU")} · {request.created_by}</small></article>)}</div> : <div className="empty-state">Созданные заявки появятся здесь вместе с выбранным адресом.</div>}
+            </section>
+          </div> : <section className="surface-card section-placeholder"><div className="placeholder-icon">{active === "Жильцы" ? <Users size={26} /> : <Settings size={26} />}</div><h3>{active}</h3><p>Раздел подготовлен для следующего этапа разработки.</p></section>}
+          {notice && <div className="success-message" role="status">{notice}</div>}{error && <div className="error-message inline-error" role="alert">{error}</div>}<footer className="page-footer">ЖКХ · Диспетчер <span>Версия 0.2.0 · Прототип</span></footer>
         </div>
       </main>
     </div>
   );
+}
+
+function addressTypeLabel(type: string) {
+  const labels: Record<string, string> = { locality: "Населённый пункт", street: "Улица", building: "Дом", apartment: "Квартира", other: "Другой адрес" };
+  return labels[type] || "Адрес";
+}
+
+function priorityLabel(priority: string) {
+  const labels: Record<string, string> = { low: "Низкий", normal: "Обычный", high: "Высокий", urgent: "Срочный" };
+  return labels[priority] || priority;
 }
 
 function sectionDescription(section: string) {
