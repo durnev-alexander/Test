@@ -33,6 +33,58 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
+class Address(Base):
+    __tablename__ = "addresses"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    address_text: Mapped[str] = mapped_column(String(500), unique=True, index=True)
+    address_type: Mapped[str] = mapped_column(String(30), default="other")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class ServiceRequest(Base):
+    __tablename__ = "service_requests"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    title: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str] = mapped_column(Text, default="")
+    priority: Mapped[str] = mapped_column(String(20), default="normal")
+    status: Mapped[str] = mapped_column(String(30), default="open")
+    address_id: Mapped[int] = mapped_column(ForeignKey("addresses.id"), index=True)
+    created_by: Mapped[str] = mapped_column(String(80))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    address: Mapped[Address] = relationship()
+
+
+class AddressCreate(BaseModel):
+    address_text: str = Field(min_length=2, max_length=500)
+    address_type: str = Field(default="other", pattern="^(locality|street|building|apartment|other)$")
+
+
+class AddressResponse(BaseModel):
+    id: int
+    address_text: str
+    address_type: str
+    is_active: bool
+
+
+class RequestCreate(BaseModel):
+    title: str = Field(min_length=2, max_length=200)
+    description: str = Field(default="", max_length=5000)
+    priority: str = Field(default="normal", pattern="^(low|normal|high|urgent)$")
+    address_id: int = Field(gt=0)
+
+
+class RequestResponse(BaseModel):
+    id: int
+    title: str
+    description: str
+    priority: str
+    status: str
+    address_id: int
+    address_text: str
+    created_by: str
+    created_at: datetime
+
+
 class LoginRequest(BaseModel):
     username: str = Field(min_length=1, max_length=80)
     password: str = Field(min_length=1, max_length=256)
@@ -104,6 +156,42 @@ def current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_
     return user
 
 
+@app.get("/api/addresses", response_model=list[AddressResponse])
+def list_addresses(user: User = Depends(current_user), db: Session = Depends(get_db)) -> list[AddressResponse]:
+    addresses = db.scalars(select(Address).where(Address.is_active.is_(True)).order_by(Address.address_text)).all()
+    return [AddressResponse(id=a.id, address_text=a.address_text, address_type=a.address_type, is_active=a.is_active) for a in addresses]
+
+
+@app.post("/api/addresses", response_model=AddressResponse, status_code=201)
+def create_address(data: AddressCreate, user: User = Depends(current_user), db: Session = Depends(get_db)) -> AddressResponse:
+    address_text = data.address_text.strip()
+    if db.scalar(select(Address).where(func.lower(Address.address_text) == address_text.lower())):
+        raise HTTPException(status_code=409, detail="Такой адрес уже есть в справочнике")
+    address = Address(address_text=address_text, address_type=data.address_type)
+    db.add(address)
+    db.commit()
+    db.refresh(address)
+    return AddressResponse(id=address.id, address_text=address.address_text, address_type=address.address_type, is_active=address.is_active)
+
+
+@app.get("/api/requests", response_model=list[RequestResponse])
+def list_requests(user: User = Depends(current_user), db: Session = Depends(get_db)) -> list[RequestResponse]:
+    items = db.scalars(select(ServiceRequest).order_by(ServiceRequest.created_at.desc())).all()
+    return [RequestResponse(id=r.id, title=r.title, description=r.description, priority=r.priority, status=r.status, address_id=r.address_id, address_text=r.address.address_text, created_by=r.created_by, created_at=r.created_at) for r in items]
+
+
+@app.post("/api/requests", response_model=RequestResponse, status_code=201)
+def create_request(data: RequestCreate, user: User = Depends(current_user), db: Session = Depends(get_db)) -> RequestResponse:
+    address = db.get(Address, data.address_id)
+    if address is None or not address.is_active:
+        raise HTTPException(status_code=422, detail="Выберите адрес из действующего справочника")
+    item = ServiceRequest(title=data.title.strip(), description=data.description.strip(), priority=data.priority, address_id=address.id, created_by=user.username)
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return RequestResponse(id=item.id, title=item.title, description=item.description, priority=item.priority, status=item.status, address_id=item.address_id, address_text=address.address_text, created_by=item.created_by, created_at=item.created_at)
+
+
 @app.get("/health")
 def health() -> dict:
     return {"status": "ok"}
@@ -126,10 +214,12 @@ def me(user: User = Depends(current_user)) -> UserResponse:
 
 
 @app.get("/api/dashboard")
-def dashboard(user: User = Depends(current_user)) -> dict:
+def dashboard(user: User = Depends(current_user), db: Session = Depends(get_db)) -> dict:
+    address_count = db.scalar(select(func.count(Address.id)).where(Address.is_active.is_(True))) or 0
+    open_requests = db.scalar(select(func.count(ServiceRequest.id)).where(ServiceRequest.status == "open")) or 0
     return {
         "message": f"Добро пожаловать, {user.username}",
-        "address_count": 0,
-        "open_requests": 0,
-        "pending_requests": 0,
+        "address_count": address_count,
+        "open_requests": open_requests,
+        "pending_requests": open_requests,
     }
