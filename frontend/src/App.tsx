@@ -141,9 +141,9 @@ export default function App() {
     } else if (type === "street") {
       setAddressBuilding(""); setAddressApartment("");
     } else if (type === "building") {
-      setAddressStreet(""); setAddressApartment("");
+      setAddressApartment("");
     } else if (type === "apartment") {
-      setAddressStreet("");
+      // Для квартиры сохраняем улицу и дом.
     }
   }
   async function handleSaveAddress(event: FormEvent<HTMLFormElement>){event.preventDefault();setError("");setNotice("");try{const url=API_URL+"/api/addresses"+(editingAddressId?"/"+editingAddressId:"");const response=await fetch(url,{method:editingAddressId?"PUT":"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({address_type:addressType,locality:addressLocality.trim(),street:addressStreet.trim(),building:addressBuilding.trim(),apartment:addressApartment.trim()})});const data=await response.json();if(!response.ok)throw new Error(data.detail||"Не удалось сохранить адрес.");setAddresses(previous=>[...previous.filter(x=>x.id!==data.id),data].sort((a,b)=>a.address_text.localeCompare(b.address_text,"ru")));const wasEditing=editingAddressId!==null;cancelEditAddress();if(!wasEditing)setDashboard(previous=>previous?{...previous,address_count:previous.address_count+1}:previous);setNotice(wasEditing?"Адрес изменён.":"Адрес добавлен в справочник.");}catch(e){setError(e instanceof Error?e.message:"Ошибка сохранения адреса.");}}
@@ -306,8 +306,8 @@ export default function App() {
                 </select>
                 <div className="form-grid-2">
                   <div><label htmlFor="addressLocality">Населённый пункт <span className="required-mark">*</span></label><input id="addressLocality" value={addressLocality} onChange={e=>setAddressLocality(e.target.value)} placeholder="Название населённого пункта" required /></div>
-                  {(addressType === "street" || addressType === "other") && <div><label htmlFor="addressStreet">Улица{addressType === "street" && <span className="required-mark"> *</span>}</label><input id="addressStreet" value={addressStreet} onChange={e=>setAddressStreet(e.target.value)} placeholder="Название улицы" required={addressType === "street"} /></div>}
-                  {(addressType === "building" || addressType === "apartment" || addressType === "other") && <div><label htmlFor="addressBuilding">Дом{(addressType === "building" || addressType === "apartment") && <span className="required-mark"> *</span>}</label><input id="addressBuilding" value={addressBuilding} onChange={e=>setAddressBuilding(e.target.value)} placeholder="Номер дома" required={addressType === "building" || addressType === "apartment"} /></div>}
+                  {(addressType === "street" || addressType === "building" || addressType === "apartment" || addressType === "other") && <div><label htmlFor="addressStreet">Улица{(addressType === "street" || addressType === "building" || addressType === "apartment") && <span className="required-mark"> *</span>}</label><input id="addressStreet" value={addressStreet} onChange={e=>setAddressStreet(e.target.value)} placeholder="Название улицы" required={addressType === "street" || addressType === "building" || addressType === "apartment"} /></div>}
+                  {(addressType === "building" || addressType === "apartment" || addressType === "other") && <div><label htmlFor="addressBuilding">Дом{(addressType === "building" || addressType === "apartment") && <span className="required-mark"> *</span>}</label><input id="addressBuilding" value={addressBuilding} onChange={e=>setAddressBuilding(e.target.value)} placeholder="Номер дома" required={addressType === "building" || addressType === "apartment"} /></div>
                   {(addressType === "apartment" || addressType === "other") && <div><label htmlFor="addressApartment">Квартира{addressType === "apartment" && <span className="required-mark"> *</span>}</label><input id="addressApartment" value={addressApartment} onChange={e=>setAddressApartment(e.target.value)} placeholder="Номер квартиры" required={addressType === "apartment"} /></div>}
                 </div>
                 <p className="form-help">Адрес будет сформирован автоматически из заполненных полей.</p>
