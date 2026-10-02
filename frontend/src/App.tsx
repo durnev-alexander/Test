@@ -222,14 +222,14 @@ export default function App() {
     setNotice("");
     if (!residentAddressId) { setError("Выберите адрес из справочника адресов."); return; }
     try {
-      const response = await fetch(\${API_URL}/api/residents, {
+      const response = await fetch(`${API_URL}/api/residents`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: \`Bearer \${token}\` },
         body: JSON.stringify({ last_name: residentLastName.trim(), first_name: residentFirstName.trim(), middle_name: residentMiddleName.trim(), birth_date: residentBirthDate || null, address_id: Number(residentAddressId), phone: residentPhone.trim(), comment: residentComment.trim() }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || "Не удалось сохранить жильца.");
-      setResidents(previous => [...previous, data].sort((a, b) => (\`\${a.last_name} \${a.first_name} \${a.middle_name}\`).localeCompare(\`\${b.last_name} \${b.first_name} \${b.middle_name}\`, "ru")));
+      setResidents(previous => [...previous, data].sort((a, b) => (a.last_name + " " + a.first_name + " " + a.middle_name).localeCompare(b.last_name + " " + b.first_name + " " + b.middle_name, "ru")));
       setResidentLastName(""); setResidentFirstName(""); setResidentMiddleName(""); setResidentBirthDate(""); setResidentAddressId(""); setResidentPhone(""); setResidentComment("");
       setNotice("Жилец добавлен в справочник.");
     } catch (e) { setError(e instanceof Error ? e.message : "Ошибка сохранения жильца."); }
@@ -305,7 +305,7 @@ export default function App() {
   ];
 
 
-    <div className={`app-shell theme-${theme}`}>
+    return (\n    <div className={`app-shell theme-${theme}`}>
       {sidebarOpen && <button className="mobile-scrim" aria-label="Закрыть меню" onClick={() => setSidebarOpen(false)} />}
       <aside className={`sidebar ${sidebarOpen ? "sidebar-open" : ""}`}>
         <div className="sidebar-brand"><span className="brand-mark small"><Building2 size={21} /></span><span>ЖКХ <small>Диспетчер</small></span><button className="icon-button mobile-close" onClick={() => setSidebarOpen(false)} aria-label="Закрыть меню"><X size={18} /></button></div>
