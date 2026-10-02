@@ -327,6 +327,7 @@ export default function App() {
                   {item.phone && <div><span>Телефон</span><strong>{item.phone}</strong></div>}
                   {item.comment && <div className="resident-comment"><span>Комментарий</span><strong>{item.comment}</strong></div>}
                 </div>
+                <div className="row-actions"><button className="icon-action" title="Редактировать" onClick={()=>startEditResident(item)}><Pencil size={16}/></button><button className="icon-action danger" title="Удалить" onClick={()=>handleDeleteResident(item)}><Trash2 size={16}/></button></div>
               </article>)}</div> : <div className="empty-state">Справочник пока пуст. Добавьте первого жильца.</div>}
             </div>
           </section> : active === "Контрагенты" ? <section className="counterparty-layout">
@@ -362,6 +363,7 @@ export default function App() {
                   {item.email && <div><span>EMail</span><strong>{item.email}</strong></div>}
                   {item.comment && <div className="counterparty-comment"><span>Комментарий</span><strong>{item.comment}</strong></div>}
                 </div>
+                <div className="row-actions"><button className="icon-action" title="Редактировать" onClick={()=>startEditCounterparty(item)}><Pencil size={16}/></button><button className="icon-action danger" title="Удалить" onClick={()=>handleDeleteCounterparty(item)}><Trash2 size={16}/></button></div>
               </article>)}</div> : <div className="empty-state">Справочник пока пуст. Добавьте первого контрагента.</div>}
             </div>
           </section> : active === "Заявки" ? <div className="directory-layout">
