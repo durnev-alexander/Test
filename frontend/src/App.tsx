@@ -24,6 +24,7 @@ export default function App() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [active, setActive] = useState("Главная");
+  const [requestFilter, setRequestFilter] = useState<"all" | "open" | "pending">("all");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
@@ -291,9 +292,9 @@ export default function App() {
           <div className="welcome-row"><div><p className="eyebrow">ОБЗОР СИСТЕМЫ</p><h1>{active === "Главная" ? "Рабочая область" : active}</h1><p className="muted">{active === "Главная" ? dashboard?.message || "Загрузка данных…" : sectionDescription(active)}</p></div><div className="today-badge"><span className="live-dot" /> Система активна</div></div>
           {active === "Главная" ? <>
             <div className="stat-grid">
-              <StatCard icon={<MapPin size={20} />} label="Адреса в справочнике" value={dashboard?.address_count ?? "—"} tone="blue" />
-              <StatCard icon={<ClipboardList size={20} />} label="Открытые заявки" value={dashboard?.open_requests ?? "—"} tone="orange" />
-              <StatCard icon={<Users size={20} />} label="Ожидают обработки" value={dashboard?.pending_requests ?? "—"} tone="purple" />
+              <StatCard icon={<MapPin size={20} />} label="Адреса в справочнике" value={dashboard?.address_count ?? "—"} tone="blue" onClick={() => { setActive("Адреса"); setRequestFilter("all"); }} />
+              <StatCard icon={<ClipboardList size={20} />} label="Открытые заявки" value={dashboard?.open_requests ?? "—"} tone="orange" onClick={() => { setActive("Заявки"); setRequestFilter("open"); }} />
+              <StatCard icon={<Users size={20} />} label="Ожидают обработки" value={dashboard?.pending_requests ?? "—"} tone="purple" onClick={() => { setActive("Заявки"); setRequestFilter("pending"); }} />
             </div>
             <div className="content-grid"><section className="surface-card"><div className="card-heading"><div><h3>Быстрые действия</h3><p>Перейдите к нужному разделу</p></div><LayoutDashboard size={20} className="subtle-icon" /></div><div className="quick-actions"><button onClick={() => setActive("Адреса")}><span className="action-icon blue"><MapPin size={19} /></span><span><strong>Справочник адресов</strong><small>Дома, квартиры и улицы</small></span><span className="arrow">→</span></button><button onClick={() => setActive("Заявки")}><span className="action-icon orange"><ClipboardList size={19} /></span><span><strong>Заявки</strong><small>Просмотр и обработка обращений</small></span><span className="arrow">→</span></button><button onClick={() => setActive("Жильцы")}><span className="action-icon purple"><Users size={19} /></span><span><strong>Жильцы</strong><small>Сведения о жителях</small></span><span className="arrow">→</span></button></div></section><section className="surface-card"><div className="card-heading"><div><h3>Состояние системы</h3><p>Основные компоненты</p></div><CheckCircle2 size={20} className="success-icon" /></div><div className="system-row"><span className="system-dot" /><span>Авторизация</span><strong>Работает</strong></div><div className="system-row"><span className="system-dot" /><span>Рабочая область</span><strong>Работает</strong></div><div className="system-row"><span className="system-dot" /><span>Справочник адресов</span><strong>Подготовлен</strong></div><div className="system-note">Данные будут отображаться здесь по мере заполнения справочников.</div></section></div>
           </> : active === "Адреса" ? <section className="directory-layout">
@@ -400,9 +401,14 @@ export default function App() {
                 <button className="primary-button" type="submit" disabled={addresses.length === 0}>Создать заявку</button>
               </form>
             </section>
-            <section className="surface-card"><div className="card-heading"><div><h3>Заявки</h3><p>{requests.length} записей</p></div><ClipboardList size={20} className="subtle-icon" /></div>
-              {requests.length ? <div className="request-list">{requests.map(request => <article className="request-row" key={request.id}><div className="request-row-top"><strong>#{request.id} · {request.title}</strong><span className={`priority-pill priority-${request.priority}`}>{priorityLabel(request.priority)}</span></div><div className="request-address"><MapPin size={14} /> {request.address_text}</div>{request.description && <p>{request.description}</p>}<small>{new Date(request.created_at).toLocaleString("ru-RU")} · {request.created_by}</small></article>)}</div> : <div className="empty-state">Созданные заявки появятся здесь вместе с выбранным адресом.</div>}
-            </section>
+            <section className="surface-card"><div className="card-heading"><div><h3>Заявки</h3><p>{requests.filter(request => requestFilter === "all" || (requestFilter === "open" ? request.status === "open" : request.status === "open" || request.status === "pending")).length} из {requests.length} записей</p></div><ClipboardList size={20} className="subtle-icon" /></div>
+              <div className="request-filters">
+                <button type="button" className={`request-filter ${requestFilter === "all" ? "active" : ""}`} onClick={() => setRequestFilter("all")}>Все</button>
+                <button type="button" className={`request-filter ${requestFilter === "open" ? "active" : ""}`} onClick={() => setRequestFilter("open")}>Открытые</button>
+                <button type="button" className={`request-filter ${requestFilter === "pending" ? "active" : ""}`} onClick={() => setRequestFilter("pending")}>Ожидают обработки</button>
+              </div>
+              {(() => { const visibleRequests = requests.filter(request => requestFilter === "all" || (requestFilter === "open" ? request.status === "open" : request.status === "open" || request.status === "pending")); return visibleRequests.length ? <div className="request-list">{visibleRequests.map(request => <article className="request-row" key={request.id}><div className="request-row-top"><strong>#{request.id} · {request.title}</strong><span className={`priority-pill priority-${request.priority}`}>{priorityLabel(request.priority)}</span></div><div className="request-address"><MapPin size={14} /> {request.address_text}</div>{request.description && <p>{request.description}</p>}<small>{new Date(request.created_at).toLocaleString("ru-RU")} · {request.created_by}</small></article>)}</div> : <div className="empty-state">Для выбранного фильтра заявок нет.</div>; })()}
+            </section>            </section>
           </div> : <section className="settings-layout">
             <div className="surface-card settings-card">
               <div className="card-heading"><div><h3>Внешний вид</h3><p>Выберите оформление рабочего места</p></div><Settings size={20} className="subtle-icon" /></div>
@@ -477,6 +483,8 @@ function sectionDescription(section: string) {
   return descriptions[section] || "";
 }
 
-function StatCard({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: string | number; tone: string }) {
-  return <section className="stat-card"><div className={`stat-icon ${tone}`}>{icon}</div><div className="stat-label">{label}</div><div className="stat-value">{value}</div><div className="stat-foot"><span className="live-dot" /> Данные системы</div></section>;
+function StatCard({ icon, label, value, tone, onClick }: { icon: React.ReactNode; label: string; value: string | number; tone: string; onClick?: () => void }) {
+  return <button type="button" className={`stat-card ${onClick ? "stat-card-clickable" : ""}`} onClick={onClick} aria-label={onClick ? `${label}: открыть раздел` : undefined}>
+    <div className={`stat-icon ${tone}`}>{icon}</div><div className="stat-label">{label}</div><div className="stat-value">{value}</div><div className="stat-foot"><span className="live-dot" /> Нажмите, чтобы открыть</div>
+  </button>;
 }
