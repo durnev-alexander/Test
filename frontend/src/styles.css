@@ -182,3 +182,25 @@
 .secondary-button{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:10px;padding:10px 16px;font:inherit;cursor:pointer;margin-left:8px}
 .secondary-button:hover{background:var(--surface-soft)}
 .theme-dark .icon-action{border-color:#405267}.theme-dark .icon-action:hover,.theme-dark .secondary-button:hover{background:#26384b}.theme-dark .secondary-button{border-color:#405267}
+
+/* Delete confirmation dialog */
+.modal-backdrop{position:fixed;inset:0;z-index:100;background:#10223770;display:flex;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(2px)}
+.confirm-dialog{width:min(100%,480px);background:#fff;border:1px solid #e4eaf0;border-radius:14px;box-shadow:0 18px 60px #14273b2e;padding:24px;display:grid;grid-template-columns:auto 1fr;column-gap:14px;align-items:start}
+.confirm-dialog-icon{width:42px;height:42px;border-radius:11px;background:#fff1f1;color:#c94747;display:grid;place-items:center}
+.confirm-dialog-content{min-width:0}
+.confirm-dialog-content .eyebrow{margin:2px 0 6px;color:#b36a6a}
+.confirm-dialog-content h2{font:800 calc(19px * var(--font-scale)) Manrope,sans-serif;letter-spacing:-.4px;color:#25394d;margin:0 0 8px}
+.confirm-dialog-content>p:last-child{font-size:calc(12px * var(--font-scale));line-height:1.65;color:#718294;margin:0}
+.confirm-dialog-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:9px;margin-top:22px;padding-top:17px;border-top:1px solid #edf0f4}
+.confirm-dialog-actions .secondary-button{margin-left:0}
+.danger-button{border:1px solid #c94747;background:#c94747;color:#fff;border-radius:9px;padding:10px 17px;font-size:calc(12px * var(--font-scale));font-weight:700}
+.danger-button:hover{background:#ad3838;border-color:#ad3838}
+:root[data-theme="dark"] .modal-backdrop{background:#0009}
+:root[data-theme="dark"] .confirm-dialog{background:#101a26;border-color:#2a3b4d;box-shadow:0 18px 60px #0008}
+:root[data-theme="dark"] .confirm-dialog-icon{background:#3a2022;color:#ef8f7f}
+:root[data-theme="dark"] .confirm-dialog-content .eyebrow{color:#d88989}
+:root[data-theme="dark"] .confirm-dialog-content h2{color:#e8f0f6}
+:root[data-theme="dark"] .confirm-dialog-content>p:last-child{color:#91a3b3}
+:root[data-theme="dark"] .confirm-dialog-actions{border-color:#243444}
+:root[data-theme="dark"] .danger-button{background:#b94141;border-color:#b94141}
+@media(max-width:600px){.modal-backdrop{padding:15px}.confirm-dialog{padding:19px}.confirm-dialog-actions{flex-direction:column-reverse}.confirm-dialog-actions button{width:100%;margin:0}}
