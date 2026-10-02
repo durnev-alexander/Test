@@ -134,6 +134,18 @@ export default function App() {
 
   function startEditAddress(item: Address){setEditingAddressId(item.id);setAddressType(item.address_type);setAddressLocality(item.locality||"");setAddressStreet(item.street||"");setAddressBuilding(item.building||"");setAddressApartment(item.apartment||"");setError("");setNotice("");}
   function cancelEditAddress(){setEditingAddressId(null);setAddressType("apartment");setAddressLocality("");setAddressStreet("");setAddressBuilding("");setAddressApartment("");}
+  function handleAddressTypeChange(type: string) {
+    setAddressType(type);
+    if (type === "locality") {
+      setAddressStreet(""); setAddressBuilding(""); setAddressApartment("");
+    } else if (type === "street") {
+      setAddressBuilding(""); setAddressApartment("");
+    } else if (type === "building") {
+      setAddressStreet(""); setAddressApartment("");
+    } else if (type === "apartment") {
+      setAddressStreet("");
+    }
+  }
   async function handleSaveAddress(event: FormEvent<HTMLFormElement>){event.preventDefault();setError("");setNotice("");try{const url=API_URL+"/api/addresses"+(editingAddressId?"/"+editingAddressId:"");const response=await fetch(url,{method:editingAddressId?"PUT":"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({address_type:addressType,locality:addressLocality.trim(),street:addressStreet.trim(),building:addressBuilding.trim(),apartment:addressApartment.trim()})});const data=await response.json();if(!response.ok)throw new Error(data.detail||"Не удалось сохранить адрес.");setAddresses(previous=>[...previous.filter(x=>x.id!==data.id),data].sort((a,b)=>a.address_text.localeCompare(b.address_text,"ru")));const wasEditing=editingAddressId!==null;cancelEditAddress();if(!wasEditing)setDashboard(previous=>previous?{...previous,address_count:previous.address_count+1}:previous);setNotice(wasEditing?"Адрес изменён.":"Адрес добавлен в справочник.");}catch(e){setError(e instanceof Error?e.message:"Ошибка сохранения адреса.");}}
   async function handleDeleteAddress(item: Address){if(!window.confirm("Удалить адрес «"+item.address_text+"»?"))return;try{const response=await fetch(API_URL+"/api/addresses/"+item.id,{method:"DELETE",headers:{Authorization:"Bearer "+token}});if(!response.ok){const data=await response.json();throw new Error(data.detail||"Не удалось удалить адрес.");}setAddresses(previous=>previous.filter(x=>x.id!==item.id));setDashboard(previous=>previous?{...previous,address_count:Math.max(0,previous.address_count-1)}:previous);if(editingAddressId===item.id)cancelEditAddress();setNotice("Адрес удалён.");}catch(e){setError(e instanceof Error?e.message:"Ошибка удаления адреса.");}}
   async function handleCreateRequest(event: FormEvent<HTMLFormElement>) {
@@ -265,8 +277,8 @@ export default function App() {
         })}</nav>
         <div className="sidebar-bottom">
           <div className="help-card"><span className="help-icon"><CheckCircle2 size={18} /></span><strong>Рабочее место готово</strong><p>Вы вошли в систему. Можно приступать к работе.</p></div>
-          <button className="nav-item logout" onClick={logout}><LogOut size={18} /><span>Выйти из системы</span></button>
           <button className={`nav-item settings-bottom ${active === "Настройки" ? "active" : ""}`} onClick={() => { setActive("Настройки"); setSidebarOpen(false); }}><Settings size={18} /><span>Настройки</span></button>
+          <button className="nav-item logout" onClick={logout}><LogOut size={18} /><span>Выйти из системы</span></button>
         </div>
       </aside>
       <main className="main-area">
@@ -285,12 +297,18 @@ export default function App() {
               <div className="card-heading"><div><h3>Добавить адрес</h3><p>Адреса из этого списка доступны при создании заявок</p></div><MapPin size={20} className="subtle-icon" /></div>
               <form className="data-form" onSubmit={handleSaveAddress}>
                 <label htmlFor="addressType">Тип адреса</label>
-                <select id="addressType" value={addressType} onChange={e => setAddressType(e.target.value)}><option value="locality">Населённый пункт</option><option value="street">Улица</option><option value="building">Дом</option><option value="apartment">Квартира</option><option value="other">Другой адрес</option></select>
+                <select id="addressType" value={addressType} onChange={e => handleAddressTypeChange(e.target.value)}>
+                  <option value="locality">Населённый пункт</option>
+                  <option value="street">Улица</option>
+                  <option value="building">Дом</option>
+                  <option value="apartment">Квартира</option>
+                  <option value="other">Другой адрес</option>
+                </select>
                 <div className="form-grid-2">
-                  <div><label htmlFor="addressLocality">Населённый пункт</label><input id="addressLocality" value={addressLocality} onChange={e=>setAddressLocality(e.target.value)} placeholder="Город, посёлок, деревня" /></div>
-                  <div><label htmlFor="addressStreet">Улица</label><input id="addressStreet" value={addressStreet} onChange={e=>setAddressStreet(e.target.value)} placeholder="Название улицы" /></div>
-                  <div><label htmlFor="addressBuilding">Дом</label><input id="addressBuilding" value={addressBuilding} onChange={e=>setAddressBuilding(e.target.value)} placeholder="12" /></div>
-                  <div><label htmlFor="addressApartment">Квартира</label><input id="addressApartment" value={addressApartment} onChange={e=>setAddressApartment(e.target.value)} placeholder="45" /></div>
+                  <div><label htmlFor="addressLocality">Населённый пункт <span className="required-mark">*</span></label><input id="addressLocality" value={addressLocality} onChange={e=>setAddressLocality(e.target.value)} placeholder="Название населённого пункта" required /></div>
+                  {(addressType === "street" || addressType === "other") && <div><label htmlFor="addressStreet">Улица{addressType === "street" && <span className="required-mark"> *</span>}</label><input id="addressStreet" value={addressStreet} onChange={e=>setAddressStreet(e.target.value)} placeholder="Название улицы" required={addressType === "street"} /></div>}
+                  {(addressType === "building" || addressType === "apartment" || addressType === "other") && <div><label htmlFor="addressBuilding">Дом{(addressType === "building" || addressType === "apartment") && <span className="required-mark"> *</span>}</label><input id="addressBuilding" value={addressBuilding} onChange={e=>setAddressBuilding(e.target.value)} placeholder="Номер дома" required={addressType === "building" || addressType === "apartment"} /></div>}
+                  {(addressType === "apartment" || addressType === "other") && <div><label htmlFor="addressApartment">Квартира{addressType === "apartment" && <span className="required-mark"> *</span>}</label><input id="addressApartment" value={addressApartment} onChange={e=>setAddressApartment(e.target.value)} placeholder="Номер квартиры" required={addressType === "apartment"} /></div>}
                 </div>
                 <p className="form-help">Адрес будет сформирован автоматически из заполненных полей.</p>
                 <button className="primary-button" type="submit">{editingAddressId ? "Сохранить изменения" : "Добавить в справочник"}</button>
