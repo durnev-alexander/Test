@@ -284,6 +284,30 @@ def create_counterparty(data: CounterpartyCreate, user: User = Depends(current_u
     )
 
 
+@app.get("/api/residents", response_model=list[ResidentResponse])
+def list_residents(user: User = Depends(current_user), db: Session = Depends(get_db)) -> list[ResidentResponse]:
+    items = db.scalars(select(Resident).order_by(Resident.last_name, Resident.first_name, Resident.middle_name)).all()
+    return [ResidentResponse(id=item.id, last_name=item.last_name, first_name=item.first_name, middle_name=item.middle_name, birth_date=item.birth_date.date().isoformat() if item.birth_date else None, address_id=item.address_id, address_text=item.address.address_text, phone=item.phone, comment=item.comment) for item in items]
+
+
+@app.post("/api/residents", response_model=ResidentResponse, status_code=201)
+def create_resident(data: ResidentCreate, user: User = Depends(current_user), db: Session = Depends(get_db)) -> ResidentResponse:
+    address = db.get(Address, data.address_id)
+    if address is None or not address.is_active:
+        raise HTTPException(status_code=422, detail="Выберите адрес из действующего справочника")
+    birth_date = None
+    if data.birth_date:
+        try:
+            birth_date = datetime.strptime(data.birth_date, "%Y-%m-%d")
+        except ValueError:
+            raise HTTPException(status_code=422, detail="Дата рождения указана неверно")
+    item = Resident(last_name=data.last_name.strip(), first_name=data.first_name.strip(), middle_name=data.middle_name.strip(), birth_date=birth_date, address_id=address.id, phone=data.phone.strip(), comment=data.comment.strip())
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return ResidentResponse(id=item.id, last_name=item.last_name, first_name=item.first_name, middle_name=item.middle_name, birth_date=item.birth_date.date().isoformat() if item.birth_date else None, address_id=item.address_id, address_text=address.address_text, phone=item.phone, comment=item.comment)
+
+
 @app.get("/api/requests", response_model=list[RequestResponse])
 def list_requests(user: User = Depends(current_user), db: Session = Depends(get_db)) -> list[RequestResponse]:
     items = db.scalars(select(ServiceRequest).order_by(ServiceRequest.created_at.desc())).all()
