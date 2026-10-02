@@ -204,3 +204,15 @@
 :root[data-theme="dark"] .confirm-dialog-actions{border-color:#243444}
 :root[data-theme="dark"] .danger-button{background:#b94141;border-color:#b94141}
 @media(max-width:600px){.modal-backdrop{padding:15px}.confirm-dialog{padding:19px}.confirm-dialog-actions{flex-direction:column-reverse}.confirm-dialog-actions button{width:100%;margin:0}}
+
+.stat-card-clickable{width:100%;font:inherit;color:inherit;text-align:left;cursor:pointer;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}
+.stat-card-clickable:hover{transform:translateY(-2px);border-color:#cbd9e5;box-shadow:0 8px 22px #243b5312}
+.stat-card-clickable:focus-visible{outline:3px solid #459ad455;outline-offset:2px}
+.request-filters{display:flex;flex-wrap:wrap;gap:7px;margin:-4px 0 6px;padding-bottom:11px}
+.request-filter{border:1px solid #dce4eb;background:#f7f9fb;color:#718294;border-radius:7px;padding:7px 10px;font-size:calc(10px * var(--font-scale));font-weight:700}
+.request-filter:hover{border-color:#b9cddd;color:#3d607a;background:#f1f6fa}
+.request-filter.active{border-color:#4a94c8;background:#eaf4fc;color:#216da6}
+:root[data-theme="dark"] .stat-card-clickable:hover{border-color:#3b5368;box-shadow:0 8px 22px #0005}
+:root[data-theme="dark"] .request-filter{border-color:#2c4052;background:#172431;color:#91a3b3}
+:root[data-theme="dark"] .request-filter:hover{border-color:#416077;color:#c2d1dc;background:#1c2d3b}
+:root[data-theme="dark"] .request-filter.active{border-color:#4387b7;background:#19364b;color:#8dc6eb}
