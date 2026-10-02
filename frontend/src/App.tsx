@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import {
   Bell, Building2, CheckCircle2, ClipboardList, LayoutDashboard, LogOut,
-  MapPin, Menu, Moon, Search, Settings, Sun, Users, X,
+  Handshake, MapPin, Menu, Moon, Search, Settings, Sun, Users, X,
 } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -12,6 +12,7 @@ type User = { username: string; is_active: boolean };
 type Dashboard = { message: string; address_count: number; open_requests: number; pending_requests: number };
 type Address = { id: number; address_text: string; address_type: string; is_active: boolean };
 type ServiceRequest = { id: number; title: string; description: string; priority: string; status: string; address_id: number; address_text: string; created_by: string; created_at: string };
+type Counterparty = { id: number; name: string; inn: string; kpp: string; ogrn: string; postal_address: string; legal_address: string; phone: string; email: string; comment: string };
 
 export default function App() {
   const [token, setToken] = useState(() => sessionStorage.getItem("jkx_token") || "");
@@ -25,6 +26,16 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
+  const [counterparties, setCounterparties] = useState<Counterparty[]>([]);
+  const [counterpartyName, setCounterpartyName] = useState("");
+  const [counterpartyInn, setCounterpartyInn] = useState("");
+  const [counterpartyKpp, setCounterpartyKpp] = useState("");
+  const [counterpartyOgrn, setCounterpartyOgrn] = useState("");
+  const [counterpartyPostalAddress, setCounterpartyPostalAddress] = useState("");
+  const [counterpartyLegalAddress, setCounterpartyLegalAddress] = useState("");
+  const [counterpartyPhone, setCounterpartyPhone] = useState("");
+  const [counterpartyEmail, setCounterpartyEmail] = useState("");
+  const [counterpartyComment, setCounterpartyComment] = useState("");
   const [addressText, setAddressText] = useState("");
   const [addressType, setAddressType] = useState("building");
   const [requestTitle, setRequestTitle] = useState("");
@@ -90,6 +101,14 @@ export default function App() {
         })
         .catch(e => setError(e instanceof Error ? e.message : "Ошибка загрузки заявок."));
     }
+    if (active === "Контрагенты") {
+      fetch(`${API_URL}/api/counterparties`, { headers })
+        .then(async response => {
+          if (!response.ok) throw new Error("Не удалось загрузить справочник контрагентов.");
+          setCounterparties(await response.json());
+        })
+        .catch(e => setError(e instanceof Error ? e.message : "Ошибка загрузки контрагентов."));
+    }
   }, [token, user, active]);
 
   async function handleCreateAddress(event: FormEvent<HTMLFormElement>) {
@@ -142,6 +161,44 @@ export default function App() {
       setDashboard(previous => previous ? { ...previous, open_requests: previous.open_requests + 1, pending_requests: previous.pending_requests + 1 } : previous);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Ошибка создания заявки.");
+    }
+  }
+
+  async function handleCreateCounterparty(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setNotice("");
+    try {
+      const response = await fetch(`${API_URL}/api/counterparties`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          name: counterpartyName.trim(),
+          inn: counterpartyInn.trim(),
+          kpp: counterpartyKpp.trim(),
+          ogrn: counterpartyOgrn.trim(),
+          postal_address: counterpartyPostalAddress.trim(),
+          legal_address: counterpartyLegalAddress.trim(),
+          phone: counterpartyPhone.trim(),
+          email: counterpartyEmail.trim(),
+          comment: counterpartyComment.trim(),
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "Не удалось сохранить контрагента.");
+      setCounterparties(previous => [...previous, data].sort((a, b) => a.name.localeCompare(b.name, "ru")));
+      setCounterpartyName("");
+      setCounterpartyInn("");
+      setCounterpartyKpp("");
+      setCounterpartyOgrn("");
+      setCounterpartyPostalAddress("");
+      setCounterpartyLegalAddress("");
+      setCounterpartyPhone("");
+      setCounterpartyEmail("");
+      setCounterpartyComment("");
+      setNotice("Контрагент добавлен в справочник.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Ошибка сохранения контрагента.");
     }
   }
 
@@ -208,6 +265,7 @@ export default function App() {
     { name: "Главная", icon: LayoutDashboard },
     { name: "Адреса", icon: MapPin },
     { name: "Заявки", icon: ClipboardList },
+    { name: "Контрагенты", icon: Handshake },
     { name: "Жильцы", icon: Users },
     { name: "Настройки", icon: Settings },
   ];
@@ -249,7 +307,42 @@ export default function App() {
             <div className="surface-card"><div className="card-heading"><div><h3>Справочник адресов</h3><p>{addresses.length} записей</p></div><Search size={20} className="subtle-icon" /></div>
               {addresses.length ? <div className="address-list">{addresses.map(address => <div className="address-row" key={address.id}><span className="action-icon blue"><MapPin size={17} /></span><div><strong>{address.address_text}</strong><small>{addressTypeLabel(address.address_type)}</small></div></div>)}</div> : <div className="empty-state">Справочник пока пуст. Добавьте адрес — он появится в списке выбора при заведении заявки.</div>}
             </div>
-          </section> : active === "Заявки" ? <div className="directory-layout">
+          </section> : active === "Контрагенты" ? <section className="counterparty-layout">
+            <div className="surface-card">
+              <div className="card-heading"><div><h3>Добавить контрагента</h3><p>Заполните реквизиты организации или предпринимателя</p></div><Handshake size={20} className="subtle-icon" /></div>
+              <form className="data-form counterparty-form" onSubmit={handleCreateCounterparty}>
+                <label htmlFor="counterpartyName">Наименование <span className="required-mark">*</span></label>
+                <input id="counterpartyName" value={counterpartyName} onChange={e => setCounterpartyName(e.target.value)} placeholder="Например, ООО «Управляющая компания»" required minLength={2} maxLength={300} />
+                <div className="form-grid-2">
+                  <div><label htmlFor="counterpartyInn">ИНН</label><input id="counterpartyInn" value={counterpartyInn} onChange={e => setCounterpartyInn(e.target.value)} maxLength={20} /></div>
+                  <div><label htmlFor="counterpartyKpp">КПП</label><input id="counterpartyKpp" value={counterpartyKpp} onChange={e => setCounterpartyKpp(e.target.value)} maxLength={20} /></div>
+                  <div><label htmlFor="counterpartyOgrn">ОГРН</label><input id="counterpartyOgrn" value={counterpartyOgrn} onChange={e => setCounterpartyOgrn(e.target.value)} maxLength={20} /></div>
+                  <div><label htmlFor="counterpartyPhone">Телефон</label><input id="counterpartyPhone" value={counterpartyPhone} onChange={e => setCounterpartyPhone(e.target.value)} maxLength={100} /></div>
+                  <div><label htmlFor="counterpartyEmail">EMail</label><input id="counterpartyEmail" type="email" value={counterpartyEmail} onChange={e => setCounterpartyEmail(e.target.value)} maxLength={254} /></div>
+                </div>
+                <label htmlFor="counterpartyPostalAddress">Почтовый адрес</label>
+                <input id="counterpartyPostalAddress" value={counterpartyPostalAddress} onChange={e => setCounterpartyPostalAddress(e.target.value)} maxLength={500} />
+                <label htmlFor="counterpartyLegalAddress">Юридический адрес</label>
+                <input id="counterpartyLegalAddress" value={counterpartyLegalAddress} onChange={e => setCounterpartyLegalAddress(e.target.value)} maxLength={500} />
+                <label htmlFor="counterpartyComment">Комментарий</label>
+                <textarea id="counterpartyComment" value={counterpartyComment} onChange={e => setCounterpartyComment(e.target.value)} rows={3} maxLength={5000} />
+                <button className="primary-button" type="submit">Добавить в справочник</button>
+              </form>
+            </div>
+            <div className="surface-card">
+              <div className="card-heading"><div><h3>Справочник контрагентов</h3><p>{counterparties.length} записей</p></div><Search size={20} className="subtle-icon" /></div>
+              {counterparties.length ? <div className="counterparty-list">{counterparties.map(item => <article className="counterparty-row" key={item.id}>
+                <div className="counterparty-title"><div className="action-icon blue"><Handshake size={17} /></div><div><strong>{item.name}</strong><small>{item.inn ? `ИНН ${item.inn}` : "ИНН не указан"}{item.kpp ? ` · КПП ${item.kpp}` : ""}{item.ogrn ? ` · ОГРН ${item.ogrn}` : ""}</small></div></div>
+                <div className="counterparty-details">
+                  {item.legal_address && <div><span>Юридический адрес</span><strong>{item.legal_address}</strong></div>}
+                  {item.postal_address && <div><span>Почтовый адрес</span><strong>{item.postal_address}</strong></div>}
+                  {item.phone && <div><span>Телефон</span><strong>{item.phone}</strong></div>}
+                  {item.email && <div><span>EMail</span><strong>{item.email}</strong></div>}
+                  {item.comment && <div className="counterparty-comment"><span>Комментарий</span><strong>{item.comment}</strong></div>}
+                </div>
+              </article>)}</div> : <div className="empty-state">Справочник пока пуст. Добавьте первого контрагента.</div>}
+            </div>
+          </section>          </section> : active === "Заявки" ? <div className="directory-layout">
             <section className="surface-card"><div className="card-heading"><div><h3>Новая заявка</h3><p>Обязательно выберите адрес из справочника</p></div><ClipboardList size={20} className="subtle-icon" /></div>
               <form className="data-form" onSubmit={handleCreateRequest}>
                 <label htmlFor="requestTitle">Тема заявки</label><input id="requestTitle" value={requestTitle} onChange={e => setRequestTitle(e.target.value)} placeholder="Например, протечка в подъезде" required minLength={2} maxLength={200} />
@@ -323,6 +416,7 @@ function sectionDescription(section: string) {
   const descriptions: Record<string, string> = {
     "Адреса": "Единый справочник объектов жилищного хозяйства.",
     "Заявки": "Обращения, аварии и задачи на обслуживание.",
+    "Контрагенты": "Организации и предприниматели, с которыми работает система.",
     "Жильцы": "Учёт жильцов и контактных данных.",
     "Настройки": "Настройки приложения и учётных записей.",
   };
