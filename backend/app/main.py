@@ -285,15 +285,19 @@ def compose_address(data: AddressCreate) -> str:
             raise HTTPException(status_code=422, detail="Укажите название улицы")
         parts.extend([locality, "ул. " + street])
     elif address_type == "building":
+        if not street:
+            raise HTTPException(status_code=422, detail="Укажите название улицы")
         if not building:
             raise HTTPException(status_code=422, detail="Укажите номер дома")
-        parts.extend([locality, "д. " + building])
+        parts.extend([locality, "ул. " + street, "д. " + building])
     elif address_type == "apartment":
+        if not street:
+            raise HTTPException(status_code=422, detail="Укажите название улицы")
         if not building:
             raise HTTPException(status_code=422, detail="Укажите номер дома")
         if not apartment:
             raise HTTPException(status_code=422, detail="Укажите номер квартиры")
-        parts.extend([locality, "д. " + building, "кв. " + apartment])
+        parts.extend([locality, "ул. " + street, "д. " + building, "кв. " + apartment])
     else:
         parts.append(locality)
         if street:
