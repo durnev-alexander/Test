@@ -342,7 +342,7 @@ export default function App() {
                 </div>
               </article>)}</div> : <div className="empty-state">Справочник пока пуст. Добавьте первого контрагента.</div>}
             </div>
-          </section>          </section> : active === "Заявки" ? <div className="directory-layout">
+          </section> : active === "Заявки" ? <div className="directory-layout">
             <section className="surface-card"><div className="card-heading"><div><h3>Новая заявка</h3><p>Обязательно выберите адрес из справочника</p></div><ClipboardList size={20} className="subtle-icon" /></div>
               <form className="data-form" onSubmit={handleCreateRequest}>
                 <label htmlFor="requestTitle">Тема заявки</label><input id="requestTitle" value={requestTitle} onChange={e => setRequestTitle(e.target.value)} placeholder="Например, протечка в подъезде" required minLength={2} maxLength={200} />
