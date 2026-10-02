@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import {
   Bell, Building2, CheckCircle2, ClipboardList, LayoutDashboard, LogOut,
-  Handshake, MapPin, Menu, Moon, Search, Settings, Sun, Users, X,
+  Handshake, MapPin, Menu, Moon, Pencil, Search, Settings, Sun, Trash2, Users, X,
 } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -10,7 +10,7 @@ type Theme = "light" | "dark";
 type FontSize = "small" | "medium" | "large";
 type User = { username: string; is_active: boolean };
 type Dashboard = { message: string; address_count: number; open_requests: number; pending_requests: number };
-type Address = { id: number; address_text: string; address_type: string; is_active: boolean };
+type Address = { id: number; address_text: string; address_type: string; locality: string; street: string; building: string; apartment: string; is_active: boolean };
 type ServiceRequest = { id: number; title: string; description: string; priority: string; status: string; address_id: number; address_text: string; created_by: string; created_at: string };
 type Counterparty = { id: number; name: string; inn: string; kpp: string; ogrn: string; postal_address: string; legal_address: string; phone: string; email: string; comment: string };
 type Resident = { id: number; last_name: string; first_name: string; middle_name: string; birth_date: string | null; address_id: number; address_text: string; phone: string; comment: string };
@@ -36,6 +36,7 @@ export default function App() {
   const [residentAddressId, setResidentAddressId] = useState("");
   const [residentPhone, setResidentPhone] = useState("");
   const [residentComment, setResidentComment] = useState("");
+  const [editingResidentId, setEditingResidentId] = useState<number | null>(null);
   const [counterpartyName, setCounterpartyName] = useState("");
   const [counterpartyInn, setCounterpartyInn] = useState("");
   const [counterpartyKpp, setCounterpartyKpp] = useState("");
@@ -45,8 +46,13 @@ export default function App() {
   const [counterpartyPhone, setCounterpartyPhone] = useState("");
   const [counterpartyEmail, setCounterpartyEmail] = useState("");
   const [counterpartyComment, setCounterpartyComment] = useState("");
-  const [addressText, setAddressText] = useState("");
-  const [addressType, setAddressType] = useState("building");
+  const [editingCounterpartyId, setEditingCounterpartyId] = useState<number | null>(null);
+  const [addressType, setAddressType] = useState("apartment");
+  const [addressLocality, setAddressLocality] = useState("");
+  const [addressStreet, setAddressStreet] = useState("");
+  const [addressBuilding, setAddressBuilding] = useState("");
+  const [addressApartment, setAddressApartment] = useState("");
+  const [editingAddressId, setEditingAddressId] = useState<number | null>(null);
   const [requestTitle, setRequestTitle] = useState("");
   const [requestDescription, setRequestDescription] = useState("");
   const [requestPriority, setRequestPriority] = useState("normal");
@@ -125,27 +131,11 @@ export default function App() {
     }
   }, [token, user, active]);
 
-  async function handleCreateAddress(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError("");
-    setNotice("");
-    try {
-      const response = await fetch(`${API_URL}/api/addresses`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ address_text: addressText.trim(), address_type: addressType }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || "Не удалось сохранить адрес.");
-      setAddresses(previous => [...previous, data].sort((a, b) => a.address_text.localeCompare(b.address_text, "ru")));
-      setAddressText("");
-      setNotice("Адрес добавлен в справочник.");
-      setDashboard(previous => previous ? { ...previous, address_count: previous.address_count + 1 } : previous);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Ошибка сохранения адреса.");
-    }
-  }
 
+  function startEditAddress(item: Address){setEditingAddressId(item.id);setAddressType(item.address_type);setAddressLocality(item.locality||"");setAddressStreet(item.street||"");setAddressBuilding(item.building||"");setAddressApartment(item.apartment||"");setError("");setNotice("");}
+  function cancelEditAddress(){setEditingAddressId(null);setAddressType("apartment");setAddressLocality("");setAddressStreet("");setAddressBuilding("");setAddressApartment("");}
+  async function handleSaveAddress(event: FormEvent<HTMLFormElement>){event.preventDefault();setError("");setNotice("");try{const url=API_URL+"/api/addresses"+(editingAddressId?"/"+editingAddressId:"");const response=await fetch(url,{method:editingAddressId?"PUT":"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({address_type:addressType,locality:addressLocality.trim(),street:addressStreet.trim(),building:addressBuilding.trim(),apartment:addressApartment.trim()})});const data=await response.json();if(!response.ok)throw new Error(data.detail||"Не удалось сохранить адрес.");setAddresses(previous=>[...previous.filter(x=>x.id!==data.id),data].sort((a,b)=>a.address_text.localeCompare(b.address_text,"ru")));const wasEditing=editingAddressId!==null;cancelEditAddress();if(!wasEditing)setDashboard(previous=>previous?{...previous,address_count:previous.address_count+1}:previous);setNotice(wasEditing?"Адрес изменён.":"Адрес добавлен в справочник.");}catch(e){setError(e instanceof Error?e.message:"Ошибка сохранения адреса.");}}
+  async function handleDeleteAddress(item: Address){if(!window.confirm("Удалить адрес «"+item.address_text+"»?"))return;try{const response=await fetch(API_URL+"/api/addresses/"+item.id,{method:"DELETE",headers:{Authorization:"Bearer "+token}});if(!response.ok){const data=await response.json();throw new Error(data.detail||"Не удалось удалить адрес.");}setAddresses(previous=>previous.filter(x=>x.id!==item.id));setDashboard(previous=>previous?{...previous,address_count:Math.max(0,previous.address_count-1)}:previous);if(editingAddressId===item.id)cancelEditAddress();setNotice("Адрес удалён.");}catch(e){setError(e instanceof Error?e.message:"Ошибка удаления адреса.");}}
   async function handleCreateRequest(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
@@ -178,63 +168,16 @@ export default function App() {
     }
   }
 
-  async function handleCreateCounterparty(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError("");
-    setNotice("");
-    try {
-      const response = await fetch(`${API_URL}/api/counterparties`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          name: counterpartyName.trim(),
-          inn: counterpartyInn.trim(),
-          kpp: counterpartyKpp.trim(),
-          ogrn: counterpartyOgrn.trim(),
-          postal_address: counterpartyPostalAddress.trim(),
-          legal_address: counterpartyLegalAddress.trim(),
-          phone: counterpartyPhone.trim(),
-          email: counterpartyEmail.trim(),
-          comment: counterpartyComment.trim(),
-        }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || "Не удалось сохранить контрагента.");
-      setCounterparties(previous => [...previous, data].sort((a, b) => a.name.localeCompare(b.name, "ru")));
-      setCounterpartyName("");
-      setCounterpartyInn("");
-      setCounterpartyKpp("");
-      setCounterpartyOgrn("");
-      setCounterpartyPostalAddress("");
-      setCounterpartyLegalAddress("");
-      setCounterpartyPhone("");
-      setCounterpartyEmail("");
-      setCounterpartyComment("");
-      setNotice("Контрагент добавлен в справочник.");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Ошибка сохранения контрагента.");
-    }
-  }
 
-  async function handleCreateResident(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError("");
-    setNotice("");
-    if (!residentAddressId) { setError("Выберите адрес из справочника адресов."); return; }
-    try {
-      const response = await fetch(`${API_URL}/api/residents`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ last_name: residentLastName.trim(), first_name: residentFirstName.trim(), middle_name: residentMiddleName.trim(), birth_date: residentBirthDate || null, address_id: Number(residentAddressId), phone: residentPhone.trim(), comment: residentComment.trim() }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || "Не удалось сохранить жильца.");
-      setResidents(previous => [...previous, data].sort((a, b) => (a.last_name + " " + a.first_name + " " + a.middle_name).localeCompare(b.last_name + " " + b.first_name + " " + b.middle_name, "ru")));
-      setResidentLastName(""); setResidentFirstName(""); setResidentMiddleName(""); setResidentBirthDate(""); setResidentAddressId(""); setResidentPhone(""); setResidentComment("");
-      setNotice("Жилец добавлен в справочник.");
-    } catch (e) { setError(e instanceof Error ? e.message : "Ошибка сохранения жильца."); }
-  }
+  function startEditCounterparty(item: Counterparty){setEditingCounterpartyId(item.id);setCounterpartyName(item.name);setCounterpartyInn(item.inn);setCounterpartyKpp(item.kpp);setCounterpartyOgrn(item.ogrn);setCounterpartyPostalAddress(item.postal_address);setCounterpartyLegalAddress(item.legal_address);setCounterpartyPhone(item.phone);setCounterpartyEmail(item.email);setCounterpartyComment(item.comment);setError("");setNotice("");}
+  function cancelEditCounterparty(){setEditingCounterpartyId(null);setCounterpartyName("");setCounterpartyInn("");setCounterpartyKpp("");setCounterpartyOgrn("");setCounterpartyPostalAddress("");setCounterpartyLegalAddress("");setCounterpartyPhone("");setCounterpartyEmail("");setCounterpartyComment("");}
+  async function handleSaveCounterparty(event: FormEvent<HTMLFormElement>){event.preventDefault();setError("");setNotice("");try{const url=API_URL+"/api/counterparties"+(editingCounterpartyId?"/"+editingCounterpartyId:"");const response=await fetch(url,{method:editingCounterpartyId?"PUT":"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({name:counterpartyName.trim(),inn:counterpartyInn.trim(),kpp:counterpartyKpp.trim(),ogrn:counterpartyOgrn.trim(),postal_address:counterpartyPostalAddress.trim(),legal_address:counterpartyLegalAddress.trim(),phone:counterpartyPhone.trim(),email:counterpartyEmail.trim(),comment:counterpartyComment.trim()})});const data=await response.json();if(!response.ok)throw new Error(data.detail||"Не удалось сохранить контрагента.");setCounterparties(previous=>[...previous.filter(x=>x.id!==data.id),data].sort((a,b)=>a.name.localeCompare(b.name,"ru")));const wasEditing=editingCounterpartyId!==null;cancelEditCounterparty();setNotice(wasEditing?"Контрагент изменён.":"Контрагент добавлен в справочник.");}catch(e){setError(e instanceof Error?e.message:"Ошибка сохранения контрагента.");}}
+  async function handleDeleteCounterparty(item: Counterparty){if(!window.confirm("Удалить контрагента «"+item.name+"»?"))return;try{const response=await fetch(API_URL+"/api/counterparties/"+item.id,{method:"DELETE",headers:{Authorization:"Bearer "+token}});if(!response.ok){const data=await response.json();throw new Error(data.detail||"Не удалось удалить контрагента.");}setCounterparties(previous=>previous.filter(x=>x.id!==item.id));if(editingCounterpartyId===item.id)cancelEditCounterparty();setNotice("Контрагент удалён.");}catch(e){setError(e instanceof Error?e.message:"Ошибка удаления контрагента.");}}
 
+  function startEditResident(item: Resident){setEditingResidentId(item.id);setResidentLastName(item.last_name);setResidentFirstName(item.first_name);setResidentMiddleName(item.middle_name);setResidentBirthDate(item.birth_date||"");setResidentAddressId(String(item.address_id));setResidentPhone(item.phone);setResidentComment(item.comment);setError("");setNotice("");}
+  function cancelEditResident(){setEditingResidentId(null);setResidentLastName("");setResidentFirstName("");setResidentMiddleName("");setResidentBirthDate("");setResidentAddressId("");setResidentPhone("");setResidentComment("");}
+  async function handleSaveResident(event: FormEvent<HTMLFormElement>){event.preventDefault();setError("");setNotice("");if(!residentAddressId){setError("Выберите адрес из справочника адресов.");return;}try{const url=API_URL+"/api/residents"+(editingResidentId?"/"+editingResidentId:"");const response=await fetch(url,{method:editingResidentId?"PUT":"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({last_name:residentLastName.trim(),first_name:residentFirstName.trim(),middle_name:residentMiddleName.trim(),birth_date:residentBirthDate||null,address_id:Number(residentAddressId),phone:residentPhone.trim(),comment:residentComment.trim()})});const data=await response.json();if(!response.ok)throw new Error(data.detail||"Не удалось сохранить жильца.");setResidents(previous=>[...previous.filter(x=>x.id!==data.id),data].sort((a,b)=>(a.last_name+" "+a.first_name+" "+a.middle_name).localeCompare(b.last_name+" "+b.first_name+" "+b.middle_name,"ru")));const wasEditing=editingResidentId!==null;cancelEditResident();setNotice(wasEditing?"Жилец изменён.":"Жилец добавлен в справочник.");}catch(e){setError(e instanceof Error?e.message:"Ошибка сохранения жильца.");}}
+  async function handleDeleteResident(item: Resident){if(!window.confirm("Удалить жильца «"+item.last_name+" "+item.first_name+"»?"))return;try{const response=await fetch(API_URL+"/api/residents/"+item.id,{method:"DELETE",headers:{Authorization:"Bearer "+token}});if(!response.ok){const data=await response.json();throw new Error(data.detail||"Не удалось удалить жильца.");}setResidents(previous=>previous.filter(x=>x.id!==item.id));if(editingResidentId===item.id)cancelEditResident();setNotice("Жилец удалён.");}catch(e){setError(e instanceof Error?e.message:"Ошибка удаления жильца.");}}
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
@@ -340,21 +283,27 @@ export default function App() {
           </> : active === "Адреса" ? <section className="directory-layout">
             <div className="surface-card">
               <div className="card-heading"><div><h3>Добавить адрес</h3><p>Адреса из этого списка доступны при создании заявок</p></div><MapPin size={20} className="subtle-icon" /></div>
-              <form className="data-form" onSubmit={handleCreateAddress}>
+              <form className="data-form" onSubmit={handleSaveAddress}>
                 <label htmlFor="addressType">Тип адреса</label>
                 <select id="addressType" value={addressType} onChange={e => setAddressType(e.target.value)}><option value="locality">Населённый пункт</option><option value="street">Улица</option><option value="building">Дом</option><option value="apartment">Квартира</option><option value="other">Другой адрес</option></select>
-                <label htmlFor="addressText">Адрес / название</label>
-                <input id="addressText" value={addressText} onChange={e => setAddressText(e.target.value)} placeholder="Например, ул. Лесная, д. 12, кв. 4" required minLength={2} maxLength={500} />
-                <button className="primary-button" type="submit">Добавить в справочник</button>
+                <div className="form-grid-2">
+                  <div><label htmlFor="addressLocality">Населённый пункт</label><input id="addressLocality" value={addressLocality} onChange={e=>setAddressLocality(e.target.value)} placeholder="Город, посёлок, деревня" /></div>
+                  <div><label htmlFor="addressStreet">Улица</label><input id="addressStreet" value={addressStreet} onChange={e=>setAddressStreet(e.target.value)} placeholder="Название улицы" /></div>
+                  <div><label htmlFor="addressBuilding">Дом</label><input id="addressBuilding" value={addressBuilding} onChange={e=>setAddressBuilding(e.target.value)} placeholder="12" /></div>
+                  <div><label htmlFor="addressApartment">Квартира</label><input id="addressApartment" value={addressApartment} onChange={e=>setAddressApartment(e.target.value)} placeholder="45" /></div>
+                </div>
+                <p className="form-help">Адрес будет сформирован автоматически из заполненных полей.</p>
+                <button className="primary-button" type="submit">{editingAddressId ? "Сохранить изменения" : "Добавить в справочник"}</button>
+                {editingAddressId && <button className="secondary-button" type="button" onClick={cancelEditAddress}>Отмена</button>}
               </form>
             </div>
             <div className="surface-card"><div className="card-heading"><div><h3>Справочник адресов</h3><p>{addresses.length} записей</p></div><Search size={20} className="subtle-icon" /></div>
-              {addresses.length ? <div className="address-list">{addresses.map(address => <div className="address-row" key={address.id}><span className="action-icon blue"><MapPin size={17} /></span><div><strong>{address.address_text}</strong><small>{addressTypeLabel(address.address_type)}</small></div></div>)}</div> : <div className="empty-state">Справочник пока пуст. Добавьте адрес — он появится в списке выбора при заведении заявки.</div>}
+              {addresses.length ? <div className="address-list">{addresses.map(address => <div className="address-row" key={address.id}><span className="action-icon blue"><MapPin size={17} /></span><div className="address-main"><strong>{address.address_text}</strong><small>{addressTypeLabel(address.address_type)}</small></div><div className="row-actions"><button className="icon-action" title="Редактировать" onClick={()=>startEditAddress(address)}><Pencil size={16}/></button><button className="icon-action danger" title="Удалить" onClick={()=>handleDeleteAddress(address)}><Trash2 size={16}/></button></div></div>)}</div> : <div className="empty-state">Справочник пока пуст. Добавьте адрес — он появится в списке выбора при заведении заявки.</div>}
             </div>
           </section> : active === "Жильцы" ? <section className="resident-layout">
             <div className="surface-card">
               <div className="card-heading"><div><h3>Добавить жильца</h3><p>Адрес выбирается из справочника адресов</p></div><Users size={20} className="subtle-icon" /></div>
-              <form className="data-form resident-form" onSubmit={handleCreateResident}>
+              <form className="data-form resident-form" onSubmit={handleSaveResident}>
                 <div className="form-grid-2">
                   <div><label htmlFor="residentLastName">Фамилия <span className="required-mark">*</span></label><input id="residentLastName" value={residentLastName} onChange={e => setResidentLastName(e.target.value)} required maxLength={120} /></div>
                   <div><label htmlFor="residentFirstName">Имя <span className="required-mark">*</span></label><input id="residentFirstName" value={residentFirstName} onChange={e => setResidentFirstName(e.target.value)} required maxLength={120} /></div>
@@ -366,7 +315,7 @@ export default function App() {
                 {addresses.length === 0 && <p className="form-help">Сначала добавьте адрес в справочнике «Адреса».</p>}
                 <label htmlFor="residentPhone">Телефон</label><input id="residentPhone" value={residentPhone} onChange={e => setResidentPhone(e.target.value)} maxLength={100} />
                 <label htmlFor="residentComment">Комментарий</label><textarea id="residentComment" value={residentComment} onChange={e => setResidentComment(e.target.value)} rows={3} maxLength={5000} />
-                <button className="primary-button" type="submit" disabled={addresses.length === 0}>Добавить в справочник</button>
+                <button className="primary-button" type="submit" disabled={addresses.length === 0}>{editingResidentId ? "Сохранить изменения" : "Добавить в справочник"}</button>{editingResidentId && <button className="secondary-button" type="button" onClick={cancelEditResident}>Отмена</button>}
               </form>
             </div>
             <div className="surface-card">
@@ -383,7 +332,7 @@ export default function App() {
           </section> : active === "Контрагенты" ? <section className="counterparty-layout">
             <div className="surface-card">
               <div className="card-heading"><div><h3>Добавить контрагента</h3><p>Заполните реквизиты организации или предпринимателя</p></div><Handshake size={20} className="subtle-icon" /></div>
-              <form className="data-form counterparty-form" onSubmit={handleCreateCounterparty}>
+              <form className="data-form counterparty-form" onSubmit={handleSaveCounterparty}>
                 <label htmlFor="counterpartyName">Наименование <span className="required-mark">*</span></label>
                 <input id="counterpartyName" value={counterpartyName} onChange={e => setCounterpartyName(e.target.value)} placeholder="Например, ООО «Управляющая компания»" required minLength={2} maxLength={300} />
                 <div className="form-grid-2">
@@ -399,7 +348,7 @@ export default function App() {
                 <input id="counterpartyLegalAddress" value={counterpartyLegalAddress} onChange={e => setCounterpartyLegalAddress(e.target.value)} maxLength={500} />
                 <label htmlFor="counterpartyComment">Комментарий</label>
                 <textarea id="counterpartyComment" value={counterpartyComment} onChange={e => setCounterpartyComment(e.target.value)} rows={3} maxLength={5000} />
-                <button className="primary-button" type="submit">Добавить в справочник</button>
+                <button className="primary-button" type="submit">{editingCounterpartyId ? "Сохранить изменения" : "Добавить в справочник"}</button>{editingCounterpartyId && <button className="secondary-button" type="button" onClick={cancelEditCounterparty}>Отмена</button>}
               </form>
             </div>
             <div className="surface-card">
