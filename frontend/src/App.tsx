@@ -7,6 +7,7 @@ import {
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 type Theme = "light" | "dark";
+type FontSize = "small" | "medium" | "large";
 type User = { username: string; is_active: boolean };
 type Dashboard = { message: string; address_count: number; open_requests: number; pending_requests: number };
 type Address = { id: number; address_text: string; address_type: string; is_active: boolean };
@@ -35,6 +36,10 @@ export default function App() {
     const saved = localStorage.getItem("jkx_theme");
     return saved === "dark" ? "dark" : "light";
   });
+  const [fontSize, setFontSize] = useState<FontSize>(() => {
+    const saved = localStorage.getItem("jkx_font_size");
+    return saved === "small" || saved === "large" ? saved : "medium";
+  });
 
   async function loadSession(accessToken: string) {
     const headers = { Authorization: `Bearer ${accessToken}` };
@@ -60,6 +65,11 @@ export default function App() {
     localStorage.setItem("jkx_theme", theme);
     document.documentElement.dataset.theme = theme;
   }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem("jkx_font_size", fontSize);
+    document.documentElement.dataset.fontSize = fontSize;
+  }, [fontSize]);
 
   useEffect(() => {
     if (!token || !user) return;
@@ -269,10 +279,27 @@ export default function App() {
                   {theme === "dark" && <CheckCircle2 size={19} className="theme-check" />}
                 </button>
               </div>
+              <div className="font-size-options">
+                <button type="button" className={`font-size-option ${fontSize === "small" ? "selected" : ""}`} onClick={() => setFontSize("small")}>
+                  <span className="font-size-sample small">А</span>
+                  <span><strong>Мелкий</strong><small>Компактное отображение</small></span>
+                  {fontSize === "small" && <CheckCircle2 size={19} className="theme-check" />}
+                </button>
+                <button type="button" className={`font-size-option ${fontSize === "medium" ? "selected" : ""}`} onClick={() => setFontSize("medium")}>
+                  <span className="font-size-sample medium">А</span>
+                  <span><strong>Обычный</strong><small>Стандартный размер текста</small></span>
+                  {fontSize === "medium" && <CheckCircle2 size={19} className="theme-check" />}
+                </button>
+                <button type="button" className={`font-size-option ${fontSize === "large" ? "selected" : ""}`} onClick={() => setFontSize("large")}>
+                  <span className="font-size-sample large">А</span>
+                  <span><strong>Крупный</strong><small>Увеличенный размер текста</small></span>
+                  {fontSize === "large" && <CheckCircle2 size={19} className="theme-check" />}
+                </button>
+              </div>
             </div>
             <div className="surface-card settings-card">
               <div className="card-heading"><div><h3>Текущая тема</h3><p>Выбор сохраняется на этом компьютере</p></div><div className="settings-theme-badge">{theme === "dark" ? <Moon size={16} /> : <Sun size={16} />}{theme === "dark" ? "Тёмная" : "Светлая"}</div></div>
-              <div className="settings-note"><CheckCircle2 size={18} /> Оформление применяется сразу ко всему приложению, включая меню, карточки, формы и панель настроек.</div>
+              <div className="settings-note"><CheckCircle2 size={18} /> Оформление и размер текста применяются сразу ко всему приложению, включая меню, карточки, формы, справочники, заявки и панель настроек.</div>
             </div>
           </section>}
           {notice && <div className="success-message" role="status">{notice}</div>}{error && <div className="error-message inline-error" role="alert">{error}</div>}<footer className="page-footer">ЖКХ · Диспетчер <span>Версия 0.2.0 · Прототип</span></footer>
