@@ -408,7 +408,7 @@ export default function App() {
                 <button type="button" className={`request-filter ${requestFilter === "pending" ? "active" : ""}`} onClick={() => setRequestFilter("pending")}>Ожидают обработки</button>
               </div>
               {(() => { const visibleRequests = requests.filter(request => requestFilter === "all" || (requestFilter === "open" ? request.status === "open" : request.status === "open" || request.status === "pending")); return visibleRequests.length ? <div className="request-list">{visibleRequests.map(request => <article className="request-row" key={request.id}><div className="request-row-top"><strong>#{request.id} · {request.title}</strong><span className={`priority-pill priority-${request.priority}`}>{priorityLabel(request.priority)}</span></div><div className="request-address"><MapPin size={14} /> {request.address_text}</div>{request.description && <p>{request.description}</p>}<small>{new Date(request.created_at).toLocaleString("ru-RU")} · {request.created_by}</small></article>)}</div> : <div className="empty-state">Для выбранного фильтра заявок нет.</div>; })()}
-            </section>            </section>
+            </section>
           </div> : <section className="settings-layout">
             <div className="surface-card settings-card">
               <div className="card-heading"><div><h3>Внешний вид</h3><p>Выберите оформление рабочего места</p></div><Settings size={20} className="subtle-icon" /></div>
