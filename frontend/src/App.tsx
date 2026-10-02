@@ -1,11 +1,12 @@
 import { FormEvent, useEffect, useState } from "react";
 import {
   Bell, Building2, CheckCircle2, ClipboardList, LayoutDashboard, LogOut,
-  MapPin, Menu, Search, Settings, Users, X,
+  MapPin, Menu, Moon, Search, Settings, Sun, Users, X,
 } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
+type Theme = "light" | "dark";
 type User = { username: string; is_active: boolean };
 type Dashboard = { message: string; address_count: number; open_requests: number; pending_requests: number };
 type Address = { id: number; address_text: string; address_type: string; is_active: boolean };
@@ -30,6 +31,10 @@ export default function App() {
   const [requestPriority, setRequestPriority] = useState("normal");
   const [requestAddressId, setRequestAddressId] = useState("");
   const [notice, setNotice] = useState("");
+  const [theme, setTheme] = useState<Theme>(() => {
+    const saved = localStorage.getItem("jkx_theme");
+    return saved === "dark" ? "dark" : "light";
+  });
 
   async function loadSession(accessToken: string) {
     const headers = { Authorization: `Bearer ${accessToken}` };
@@ -156,7 +161,7 @@ export default function App() {
 
   if (!token || !user) {
     return (
-      <main className="login-page">
+      <main className={`login-page theme-${theme}`}>
         <section className="login-brand">
           <div className="brand-mark"><Building2 size={30} /></div>
           <p className="eyebrow">СИСТЕМА УПРАВЛЕНИЯ</p>
@@ -193,7 +198,7 @@ export default function App() {
   ];
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell theme-${theme}`}>
       {sidebarOpen && <button className="mobile-scrim" aria-label="Закрыть меню" onClick={() => setSidebarOpen(false)} />}
       <aside className={`sidebar ${sidebarOpen ? "sidebar-open" : ""}`}>
         <div className="sidebar-brand"><span className="brand-mark small"><Building2 size={21} /></span><span>ЖКХ <small>Диспетчер</small></span><button className="icon-button mobile-close" onClick={() => setSidebarOpen(false)} aria-label="Закрыть меню"><X size={18} /></button></div>
@@ -244,7 +249,27 @@ export default function App() {
             <section className="surface-card"><div className="card-heading"><div><h3>Заявки</h3><p>{requests.length} записей</p></div><ClipboardList size={20} className="subtle-icon" /></div>
               {requests.length ? <div className="request-list">{requests.map(request => <article className="request-row" key={request.id}><div className="request-row-top"><strong>#{request.id} · {request.title}</strong><span className={`priority-pill priority-${request.priority}`}>{priorityLabel(request.priority)}</span></div><div className="request-address"><MapPin size={14} /> {request.address_text}</div>{request.description && <p>{request.description}</p>}<small>{new Date(request.created_at).toLocaleString("ru-RU")} · {request.created_by}</small></article>)}</div> : <div className="empty-state">Созданные заявки появятся здесь вместе с выбранным адресом.</div>}
             </section>
-          </div> : <section className="surface-card section-placeholder"><div className="placeholder-icon">{active === "Жильцы" ? <Users size={26} /> : <Settings size={26} />}</div><h3>{active}</h3><p>Раздел подготовлен для следующего этапа разработки.</p></section>}
+          </div> : <section className="settings-layout">
+            <div className="surface-card settings-card">
+              <div className="card-heading"><div><h3>Внешний вид</h3><p>Выберите оформление рабочего места</p></div><Settings size={20} className="subtle-icon" /></div>
+              <div className="theme-options">
+                <button type="button" className={`theme-option ${theme === "light" ? "selected" : ""}`} onClick={() => setTheme("light")}>
+                  <span className="theme-preview light-preview"><Sun size={20} /></span>
+                  <span><strong>Светлая тема</strong><small>Светлый фон и тёмный текст</small></span>
+                  {theme === "light" && <CheckCircle2 size={19} className="theme-check" />}
+                </button>
+                <button type="button" className={`theme-option ${theme === "dark" ? "selected" : ""}`} onClick={() => setTheme("dark")}>
+                  <span className="theme-preview dark-preview"><Moon size={20} /></span>
+                  <span><strong>Тёмная тема</strong><small>Тёмный фон и светлый текст</small></span>
+                  {theme === "dark" && <CheckCircle2 size={19} className="theme-check" />}
+                </button>
+              </div>
+            </div>
+            <div className="surface-card settings-card">
+              <div className="card-heading"><div><h3>Текущая тема</h3><p>Выбор сохраняется на этом компьютере</p></div><div className="settings-theme-badge">{theme === "dark" ? <Moon size={16} /> : <Sun size={16} />}{theme === "dark" ? "Тёмная" : "Светлая"}</div></div>
+              <div className="settings-note"><CheckCircle2 size={18} /> Оформление применяется сразу ко всему приложению, включая меню, карточки, формы и панель настроек.</div>
+            </div>
+          </section>}
           {notice && <div className="success-message" role="status">{notice}</div>}{error && <div className="error-message inline-error" role="alert">{error}</div>}<footer className="page-footer">ЖКХ · Диспетчер <span>Версия 0.2.0 · Прототип</span></footer>
         </div>
       </main>
