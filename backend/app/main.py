@@ -122,6 +122,28 @@ class CounterpartyResponse(BaseModel):
     comment: str
 
 
+class ResidentCreate(BaseModel):
+    last_name: str = Field(min_length=1, max_length=120)
+    first_name: str = Field(min_length=1, max_length=120)
+    middle_name: str = Field(default="", max_length=120)
+    birth_date: str | None = Field(default=None)
+    address_id: int = Field(gt=0)
+    phone: str = Field(default="", max_length=100)
+    comment: str = Field(default="", max_length=5000)
+
+
+class ResidentResponse(BaseModel):
+    id: int
+    last_name: str
+    first_name: str
+    middle_name: str
+    birth_date: str | None
+    address_id: int
+    address_text: str
+    phone: str
+    comment: str
+
+
 class RequestCreate(BaseModel):
     title: str = Field(min_length=2, max_length=200)
     description: str = Field(default="", max_length=5000)
