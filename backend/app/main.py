@@ -269,14 +269,40 @@ def current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_
 
 def compose_address(data: AddressCreate) -> str:
     parts = []
-    if data.locality.strip():
-        parts.append(data.locality.strip())
-    if data.street.strip():
-        parts.append("ул. " + data.street.strip())
-    if data.building.strip():
-        parts.append("д. " + data.building.strip())
-    if data.apartment.strip():
-        parts.append("кв. " + data.apartment.strip())
+    address_type = data.address_type
+    locality = data.locality.strip()
+    street = data.street.strip()
+    building = data.building.strip()
+    apartment = data.apartment.strip()
+
+    if not locality:
+        raise HTTPException(status_code=422, detail="Укажите населённый пункт")
+
+    if address_type == "locality":
+        parts.append(locality)
+    elif address_type == "street":
+        if not street:
+            raise HTTPException(status_code=422, detail="Укажите название улицы")
+        parts.extend([locality, "ул. " + street])
+    elif address_type == "building":
+        if not building:
+            raise HTTPException(status_code=422, detail="Укажите номер дома")
+        parts.extend([locality, "д. " + building])
+    elif address_type == "apartment":
+        if not building:
+            raise HTTPException(status_code=422, detail="Укажите номер дома")
+        if not apartment:
+            raise HTTPException(status_code=422, detail="Укажите номер квартиры")
+        parts.extend([locality, "д. " + building, "кв. " + apartment])
+    else:
+        parts.append(locality)
+        if street:
+            parts.append("ул. " + street)
+        if building:
+            parts.append("д. " + building)
+        if apartment:
+            parts.append("кв. " + apartment)
+
     return ", ".join(parts)
 
 
