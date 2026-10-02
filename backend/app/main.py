@@ -57,6 +57,19 @@ class Counterparty(Base):
     comment: Mapped[str] = mapped_column(Text, default="")
 
 
+class Resident(Base):
+    __tablename__ = "residents"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    last_name: Mapped[str] = mapped_column(String(120), index=True)
+    first_name: Mapped[str] = mapped_column(String(120))
+    middle_name: Mapped[str] = mapped_column(String(120), default="")
+    birth_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    address_id: Mapped[int] = mapped_column(ForeignKey("addresses.id"), index=True)
+    phone: Mapped[str] = mapped_column(String(100), default="")
+    comment: Mapped[str] = mapped_column(Text, default="")
+    address: Mapped[Address] = relationship()
+
+
 class ServiceRequest(Base):
     __tablename__ = "service_requests"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
