@@ -224,7 +224,7 @@ export default function App() {
     try {
       const response = await fetch(`${API_URL}/api/residents`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: \`Bearer \${token}\` },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ last_name: residentLastName.trim(), first_name: residentFirstName.trim(), middle_name: residentMiddleName.trim(), birth_date: residentBirthDate || null, address_id: Number(residentAddressId), phone: residentPhone.trim(), comment: residentComment.trim() }),
       });
       const data = await response.json();
