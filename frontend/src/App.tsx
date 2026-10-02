@@ -13,6 +13,7 @@ type Dashboard = { message: string; address_count: number; open_requests: number
 type Address = { id: number; address_text: string; address_type: string; is_active: boolean };
 type ServiceRequest = { id: number; title: string; description: string; priority: string; status: string; address_id: number; address_text: string; created_by: string; created_at: string };
 type Counterparty = { id: number; name: string; inn: string; kpp: string; ogrn: string; postal_address: string; legal_address: string; phone: string; email: string; comment: string };
+type Resident = { id: number; last_name: string; first_name: string; middle_name: string; birth_date: string | null; address_id: number; address_text: string; phone: string; comment: string };
 
 export default function App() {
   const [token, setToken] = useState(() => sessionStorage.getItem("jkx_token") || "");
@@ -27,6 +28,14 @@ export default function App() {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [counterparties, setCounterparties] = useState<Counterparty[]>([]);
+  const [residents, setResidents] = useState<Resident[]>([]);
+  const [residentLastName, setResidentLastName] = useState("");
+  const [residentFirstName, setResidentFirstName] = useState("");
+  const [residentMiddleName, setResidentMiddleName] = useState("");
+  const [residentBirthDate, setResidentBirthDate] = useState("");
+  const [residentAddressId, setResidentAddressId] = useState("");
+  const [residentPhone, setResidentPhone] = useState("");
+  const [residentComment, setResidentComment] = useState("");
   const [counterpartyName, setCounterpartyName] = useState("");
   const [counterpartyInn, setCounterpartyInn] = useState("");
   const [counterpartyKpp, setCounterpartyKpp] = useState("");
@@ -85,7 +94,7 @@ export default function App() {
   useEffect(() => {
     if (!token || !user) return;
     const headers = { Authorization: `Bearer ${token}` };
-    if (active === "Адреса" || active === "Заявки") {
+    if (active === "Адреса" || active === "Заявки" || active === "Жильцы") {
       fetch(`${API_URL}/api/addresses`, { headers })
         .then(async response => {
           if (!response.ok) throw new Error("Не удалось загрузить справочник адресов.");
@@ -100,6 +109,11 @@ export default function App() {
           setRequests(await response.json());
         })
         .catch(e => setError(e instanceof Error ? e.message : "Ошибка загрузки заявок."));
+    }
+    if (active === "Жильцы") {
+      fetch(`${API_URL}/api/residents`, { headers })
+        .then(async response => { if (!response.ok) throw new Error("Не удалось загрузить справочник жильцов."); setResidents(await response.json()); })
+        .catch(e => setError(e instanceof Error ? e.message : "Ошибка загрузки жильцов."));
     }
     if (active === "Контрагенты") {
       fetch(`${API_URL}/api/counterparties`, { headers })
@@ -202,6 +216,25 @@ export default function App() {
     }
   }
 
+  async function handleCreateResident(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setNotice("");
+    if (!residentAddressId) { setError("Выберите адрес из справочника адресов."); return; }
+    try {
+      const response = await fetch(\${API_URL}/api/residents, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: \`Bearer \${token}\` },
+        body: JSON.stringify({ last_name: residentLastName.trim(), first_name: residentFirstName.trim(), middle_name: residentMiddleName.trim(), birth_date: residentBirthDate || null, address_id: Number(residentAddressId), phone: residentPhone.trim(), comment: residentComment.trim() }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "Не удалось сохранить жильца.");
+      setResidents(previous => [...previous, data].sort((a, b) => (\`\${a.last_name} \${a.first_name} \${a.middle_name}\`).localeCompare(\`\${b.last_name} \${b.first_name} \${b.middle_name}\`, "ru")));
+      setResidentLastName(""); setResidentFirstName(""); setResidentMiddleName(""); setResidentBirthDate(""); setResidentAddressId(""); setResidentPhone(""); setResidentComment("");
+      setNotice("Жилец добавлен в справочник.");
+    } catch (e) { setError(e instanceof Error ? e.message : "Ошибка сохранения жильца."); }
+  }
+
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
@@ -261,26 +294,36 @@ export default function App() {
     );
   }
 
-  const nav = [
+  const workNav = [
     { name: "Главная", icon: LayoutDashboard },
-    { name: "Адреса", icon: MapPin },
     { name: "Заявки", icon: ClipboardList },
-    { name: "Контрагенты", icon: Handshake },
+  ];
+  const directoryNav = [
+    { name: "Адреса", icon: MapPin },
     { name: "Жильцы", icon: Users },
-    { name: "Настройки", icon: Settings },
+    { name: "Контрагенты", icon: Handshake },
   ];
 
-  return (
+
     <div className={`app-shell theme-${theme}`}>
       {sidebarOpen && <button className="mobile-scrim" aria-label="Закрыть меню" onClick={() => setSidebarOpen(false)} />}
       <aside className={`sidebar ${sidebarOpen ? "sidebar-open" : ""}`}>
         <div className="sidebar-brand"><span className="brand-mark small"><Building2 size={21} /></span><span>ЖКХ <small>Диспетчер</small></span><button className="icon-button mobile-close" onClick={() => setSidebarOpen(false)} aria-label="Закрыть меню"><X size={18} /></button></div>
         <div className="nav-caption">РАБОЧЕЕ МЕСТО</div>
-        <nav>{nav.map(item => {
+        <nav>{workNav.map(item => {
           const Icon = item.icon;
           return <button key={item.name} className={`nav-item ${active === item.name ? "active" : ""}`} onClick={() => { setActive(item.name); setSidebarOpen(false); }}><Icon size={18} /><span>{item.name}</span>{item.name === "Заявки" && <span className="nav-count">0</span>}</button>;
         })}</nav>
-        <div className="sidebar-bottom"><div className="help-card"><span className="help-icon"><CheckCircle2 size={18} /></span><strong>Рабочее место готово</strong><p>Вы вошли в систему. Можно приступать к работе.</p></div><button className="nav-item logout" onClick={logout}><LogOut size={18} /><span>Выйти из системы</span></button></div>
+        <div className="nav-caption directory-caption">СПРАВОЧНИКИ</div>
+        <nav>{directoryNav.map(item => {
+          const Icon = item.icon;
+          return <button key={item.name} className={`nav-item ${active === item.name ? "active" : ""}`} onClick={() => { setActive(item.name); setSidebarOpen(false); }}><Icon size={18} /><span>{item.name}</span></button>;
+        })}</nav>
+        <div className="sidebar-bottom">
+          <div className="help-card"><span className="help-icon"><CheckCircle2 size={18} /></span><strong>Рабочее место готово</strong><p>Вы вошли в систему. Можно приступать к работе.</p></div>
+          <button className="nav-item logout" onClick={logout}><LogOut size={18} /><span>Выйти из системы</span></button>
+          <button className={`nav-item settings-bottom ${active === "Настройки" ? "active" : ""}`} onClick={() => { setActive("Настройки"); setSidebarOpen(false); }}><Settings size={18} /><span>Настройки</span></button>
+        </div>
       </aside>
       <main className="main-area">
         <header className="topbar"><button className="icon-button menu-toggle" onClick={() => setSidebarOpen(true)} aria-label="Открыть меню"><Menu size={21} /></button><div className="breadcrumbs">Рабочее место <span>/</span> <strong>{active}</strong></div><div className="topbar-right"><button className="icon-button notification" aria-label="Уведомления"><Bell size={19} /><i /></button><div className="user-chip"><div className="avatar">{user.username.slice(0, 1).toUpperCase()}</div><div><strong>{user.username}</strong><small>Диспетчер</small></div></div></div></header>
@@ -306,6 +349,35 @@ export default function App() {
             </div>
             <div className="surface-card"><div className="card-heading"><div><h3>Справочник адресов</h3><p>{addresses.length} записей</p></div><Search size={20} className="subtle-icon" /></div>
               {addresses.length ? <div className="address-list">{addresses.map(address => <div className="address-row" key={address.id}><span className="action-icon blue"><MapPin size={17} /></span><div><strong>{address.address_text}</strong><small>{addressTypeLabel(address.address_type)}</small></div></div>)}</div> : <div className="empty-state">Справочник пока пуст. Добавьте адрес — он появится в списке выбора при заведении заявки.</div>}
+            </div>
+          </section> : active === "Жильцы" ? <section className="resident-layout">
+            <div className="surface-card">
+              <div className="card-heading"><div><h3>Добавить жильца</h3><p>Адрес выбирается из справочника адресов</p></div><Users size={20} className="subtle-icon" /></div>
+              <form className="data-form resident-form" onSubmit={handleCreateResident}>
+                <div className="form-grid-2">
+                  <div><label htmlFor="residentLastName">Фамилия <span className="required-mark">*</span></label><input id="residentLastName" value={residentLastName} onChange={e => setResidentLastName(e.target.value)} required maxLength={120} /></div>
+                  <div><label htmlFor="residentFirstName">Имя <span className="required-mark">*</span></label><input id="residentFirstName" value={residentFirstName} onChange={e => setResidentFirstName(e.target.value)} required maxLength={120} /></div>
+                  <div><label htmlFor="residentMiddleName">Отчество</label><input id="residentMiddleName" value={residentMiddleName} onChange={e => setResidentMiddleName(e.target.value)} maxLength={120} /></div>
+                  <div><label htmlFor="residentBirthDate">Дата рождения</label><input id="residentBirthDate" type="date" value={residentBirthDate} onChange={e => setResidentBirthDate(e.target.value)} /></div>
+                </div>
+                <label htmlFor="residentAddress">Адрес <span className="required-mark">*</span></label>
+                <select id="residentAddress" value={residentAddressId} onChange={e => setResidentAddressId(e.target.value)} required><option value="">Выберите адрес из справочника…</option>{addresses.map(address => <option key={address.id} value={address.id}>{address.address_text}</option>)}</select>
+                {addresses.length === 0 && <p className="form-help">Сначала добавьте адрес в справочнике «Адреса».</p>}
+                <label htmlFor="residentPhone">Телефон</label><input id="residentPhone" value={residentPhone} onChange={e => setResidentPhone(e.target.value)} maxLength={100} />
+                <label htmlFor="residentComment">Комментарий</label><textarea id="residentComment" value={residentComment} onChange={e => setResidentComment(e.target.value)} rows={3} maxLength={5000} />
+                <button className="primary-button" type="submit" disabled={addresses.length === 0}>Добавить в справочник</button>
+              </form>
+            </div>
+            <div className="surface-card">
+              <div className="card-heading"><div><h3>Справочник жильцов</h3><p>{residents.length} записей</p></div><Search size={20} className="subtle-icon" /></div>
+              {residents.length ? <div className="resident-list">{residents.map(item => <article className="resident-row" key={item.id}>
+                <div className="resident-title"><div className="action-icon purple"><Users size={17} /></div><div><strong>{item.last_name} {item.first_name}{item.middle_name ? \` \${item.middle_name}\` : ""}</strong><small>{item.birth_date ? \`Дата рождения: \${new Date(item.birth_date + "T00:00:00").toLocaleDateString("ru-RU")}\` : "Дата рождения не указана"}</small></div></div>
+                <div className="resident-details">
+                  <div><span>Адрес</span><strong>{item.address_text}</strong></div>
+                  {item.phone && <div><span>Телефон</span><strong>{item.phone}</strong></div>}
+                  {item.comment && <div className="resident-comment"><span>Комментарий</span><strong>{item.comment}</strong></div>}
+                </div>
+              </article>)}</div> : <div className="empty-state">Справочник пока пуст. Добавьте первого жильца.</div>}
             </div>
           </section> : active === "Контрагенты" ? <section className="counterparty-layout">
             <div className="surface-card">
