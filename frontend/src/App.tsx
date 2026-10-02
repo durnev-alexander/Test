@@ -57,6 +57,11 @@ export default function App() {
   }, [token]);
 
   useEffect(() => {
+    localStorage.setItem("jkx_theme", theme);
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
+
+  useEffect(() => {
     if (!token || !user) return;
     const headers = { Authorization: `Bearer ${token}` };
     if (active === "Адреса" || active === "Заявки") {
