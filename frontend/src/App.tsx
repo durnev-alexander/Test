@@ -305,7 +305,8 @@ export default function App() {
   ];
 
 
-    return (\n    <div className={`app-shell theme-${theme}`}>
+    return (
+    <div className={`app-shell theme-${theme}`}>
       {sidebarOpen && <button className="mobile-scrim" aria-label="Закрыть меню" onClick={() => setSidebarOpen(false)} />}
       <aside className={`sidebar ${sidebarOpen ? "sidebar-open" : ""}`}>
         <div className="sidebar-brand"><span className="brand-mark small"><Building2 size={21} /></span><span>ЖКХ <small>Диспетчер</small></span><button className="icon-button mobile-close" onClick={() => setSidebarOpen(false)} aria-label="Закрыть меню"><X size={18} /></button></div>
@@ -371,7 +372,7 @@ export default function App() {
             <div className="surface-card">
               <div className="card-heading"><div><h3>Справочник жильцов</h3><p>{residents.length} записей</p></div><Search size={20} className="subtle-icon" /></div>
               {residents.length ? <div className="resident-list">{residents.map(item => <article className="resident-row" key={item.id}>
-                <div className="resident-title"><div className="action-icon purple"><Users size={17} /></div><div><strong>{item.last_name} {item.first_name}{item.middle_name ? \` \${item.middle_name}\` : ""}</strong><small>{item.birth_date ? \`Дата рождения: \${new Date(item.birth_date + "T00:00:00").toLocaleDateString("ru-RU")}\` : "Дата рождения не указана"}</small></div></div>
+                <div className="resident-title"><div className="action-icon purple"><Users size={17} /></div><div><strong>{item.last_name} {item.first_name}{item.middle_name ? ` ${item.middle_name}` : ""}</strong><small>{item.birth_date ? `Дата рождения: ${new Date(item.birth_date + "T00:00:00").toLocaleDateString("ru-RU")}` : "Дата рождения не указана"}</small></div></div>
                 <div className="resident-details">
                   <div><span>Адрес</span><strong>{item.address_text}</strong></div>
                   {item.phone && <div><span>Телефон</span><strong>{item.phone}</strong></div>}
