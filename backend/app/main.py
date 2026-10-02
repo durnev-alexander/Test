@@ -41,6 +41,22 @@ class Address(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
+
+
+class Counterparty(Base):
+    __tablename__ = "counterparties"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(300), index=True)
+    inn: Mapped[str] = mapped_column(String(20), default="")
+    kpp: Mapped[str] = mapped_column(String(20), default="")
+    ogrn: Mapped[str] = mapped_column(String(20), default="")
+    postal_address: Mapped[str] = mapped_column(String(500), default="")
+    legal_address: Mapped[str] = mapped_column(String(500), default="")
+    phone: Mapped[str] = mapped_column(String(100), default="")
+    email: Mapped[str] = mapped_column(String(254), default="")
+    comment: Mapped[str] = mapped_column(Text, default="")
+
+
 class ServiceRequest(Base):
     __tablename__ = "service_requests"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -64,6 +80,33 @@ class AddressResponse(BaseModel):
     address_text: str
     address_type: str
     is_active: bool
+
+
+
+
+class CounterpartyCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=300)
+    inn: str = Field(default="", max_length=20)
+    kpp: str = Field(default="", max_length=20)
+    ogrn: str = Field(default="", max_length=20)
+    postal_address: str = Field(default="", max_length=500)
+    legal_address: str = Field(default="", max_length=500)
+    phone: str = Field(default="", max_length=100)
+    email: str = Field(default="", max_length=254)
+    comment: str = Field(default="", max_length=5000)
+
+
+class CounterpartyResponse(BaseModel):
+    id: int
+    name: str
+    inn: str
+    kpp: str
+    ogrn: str
+    postal_address: str
+    legal_address: str
+    phone: str
+    email: str
+    comment: str
 
 
 class RequestCreate(BaseModel):
@@ -172,6 +215,38 @@ def create_address(data: AddressCreate, user: User = Depends(current_user), db: 
     db.commit()
     db.refresh(address)
     return AddressResponse(id=address.id, address_text=address.address_text, address_type=address.address_type, is_active=address.is_active)
+
+
+
+
+@app.get("/api/counterparties", response_model=list[CounterpartyResponse])
+def list_counterparties(user: User = Depends(current_user), db: Session = Depends(get_db)) -> list[CounterpartyResponse]:
+    items = db.scalars(select(Counterparty).order_by(Counterparty.name)).all()
+    return [CounterpartyResponse(
+        id=item.id, name=item.name, inn=item.inn, kpp=item.kpp, ogrn=item.ogrn,
+        postal_address=item.postal_address, legal_address=item.legal_address,
+        phone=item.phone, email=item.email, comment=item.comment,
+    ) for item in items]
+
+
+@app.post("/api/counterparties", response_model=CounterpartyResponse, status_code=201)
+def create_counterparty(data: CounterpartyCreate, user: User = Depends(current_user), db: Session = Depends(get_db)) -> CounterpartyResponse:
+    name = data.name.strip()
+    if db.scalar(select(Counterparty).where(func.lower(Counterparty.name) == name.lower())):
+        raise HTTPException(status_code=409, detail="Такой контрагент уже есть в справочнике")
+    item = Counterparty(
+        name=name, inn=data.inn.strip(), kpp=data.kpp.strip(), ogrn=data.ogrn.strip(),
+        postal_address=data.postal_address.strip(), legal_address=data.legal_address.strip(),
+        phone=data.phone.strip(), email=data.email.strip(), comment=data.comment.strip(),
+    )
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return CounterpartyResponse(
+        id=item.id, name=item.name, inn=item.inn, kpp=item.kpp, ogrn=item.ogrn,
+        postal_address=item.postal_address, legal_address=item.legal_address,
+        phone=item.phone, email=item.email, comment=item.comment,
+    )
 
 
 @app.get("/api/requests", response_model=list[RequestResponse])
